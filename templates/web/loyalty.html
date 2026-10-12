@@ -1,0 +1,70 @@
+{% extends "web/me_base.html" %}
+{% load static %}
+
+{% block title %}会员积分{% endblock %}
+
+{% block main %}
+<div class="loyalty-hero mb-4">
+  <img src="{% static 'img/stock/member-pet.jpg' %}" alt="" class="loyalty-hero-img" loading="lazy">
+  <div class="loyalty-hero-body">
+    <p class="eyebrow mb-1">{{ tier.name }}</p>
+    <h1 class="h3 mb-2">可用积分 {{ request.owner.points }}</h1>
+    <p class="mb-3 opacity-75 small">累计消费 ¥{{ tier.spent }} · {{ redeem_rate }} 积分抵 ¥1
+      {% if tier.next_name %}· 再消费 ¥{{ tier.next_need }} 升级 {{ tier.next_name }}{% else %}· 已达最高等级{% endif %}
+    </p>
+    {% if tier.next_name %}
+      <div class="loyalty-progress"><span style="width: {{ tier.progress }}%;"></span></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="ps-card p-4 h-100">
+      <h5 class="mb-3">可用优惠券</h5>
+      {% for c in coupons %}
+        <div class="coupon-tile mb-3">
+          <div class="coupon-value">
+            {% if c.kind == 'fixed' %}¥{{ c.value|floatformat:"-2" }}{% else %}{{ c.value|floatformat:"-0" }}% OFF{% endif %}
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ c.name }}</div>
+            <div class="small text-muted">码 <code>{{ c.code }}</code> · 满 ¥{{ c.min_amount|floatformat:"-2" }} · 至 {{ c.valid_until|date:"Y-m-d" }}</div>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'web:booking_create' %}">去使用</a>
+        </div>
+      {% empty %}
+        <div class="empty-state py-4">
+          <i class="bi bi-ticket-perforated"></i>
+          <p class="mt-2 mb-0 text-muted">暂无可用优惠券，下单消费可领复购福利</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="ps-card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">积分流水</h5>
+        <a class="btn btn-sm btn-primary" href="{% url 'web:booking_create' %}">去预约赚积分</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>时间</th><th>说明</th><th class="text-end">变动</th><th class="text-end">余额</th></tr></thead>
+          <tbody>
+            {% for row in ledger %}
+              <tr>
+                <td class="small text-muted text-nowrap">{{ row.created_at|date:"m-d H:i" }}</td>
+                <td>{{ row.note|default:row.get_kind_display }}{% if row.order %} <a class="small" href="{{ row.order.get_absolute_url }}">{{ row.order.order_no }}</a>{% endif %}</td>
+                <td class="text-end {% if row.points > 0 %}text-success{% else %}text-danger{% endif %}">{% if row.points > 0 %}+{% endif %}{{ row.points }}</td>
+                <td class="text-end">{{ row.balance }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">还没有积分记录，完成首单支付即可获得积分</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

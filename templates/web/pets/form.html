@@ -1,0 +1,45 @@
+{% extends "web/me_base.html" %}
+{% load web_tags %}
+
+{% block title %}{% if pet.pk %}编辑 {{ pet.name }}{% else %}添加宠物{% endif %}{% endblock %}
+
+{% block main %}
+<div class="ps-card p-4">
+  <h1 class="h4 mb-4">{% if pet.pk %}编辑 {{ pet.name }} 的档案{% else %}添加宠物档案{% endif %}</h1>
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <img id="photoPreview" class="avatar-lg" src="{% image_url pet size=160 %}" alt="照片预览">
+      <div>
+        <label class="form-label fw-semibold small" for="{{ form.photo.id_for_label }}">宠物照片</label>
+        {{ form.photo }}
+        {% for e in form.photo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+    </div>
+    <h6 class="text-primary mb-3">基本信息</h6>
+    <div class="row">
+      <div class="col-md-4">{% include "web/_field.html" with field=form.name %}</div>
+      <div class="col-md-4">{% include "web/_field.html" with field=form.species %}</div>
+      <div class="col-md-4">{% include "web/_field.html" with field=form.breed %}</div>
+      <div class="col-md-3">{% include "web/_field.html" with field=form.gender %}</div>
+      <div class="col-md-3">{% include "web/_field.html" with field=form.age %}</div>
+      <div class="col-md-3">{% include "web/_field.html" with field=form.weight %}</div>
+      <div class="col-md-3">{% include "web/_field.html" with field=form.temperament %}</div>
+      <div class="col-12">{% include "web/_field.html" with field=form.sterilized %}</div>
+    </div>
+    <h6 class="text-primary mb-3 mt-2">健康与习惯</h6>
+    <div class="row">
+      <div class="col-md-6">{% include "web/_field.html" with field=form.vaccine_expiry %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.deworm_expiry %}</div>
+      <div class="col-md-12">{% include "web/_field.html" with field=form.health_status %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.diet_notes %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.allergies %}</div>
+    </div>
+    <div class="alert alert-light small border"><i class="bi bi-info-circle me-1"></i>疫苗有效期需覆盖整个寄养期间才能预约；体重与性格用于自动匹配合适的房间。</div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary">保存档案</button>
+      <a class="btn btn-light" href="{% url 'web:pet_list' %}">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

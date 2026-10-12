@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load static web_tags %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-bg" style="background-image: url('{% static 'img/stock/hero.jpg' %}');"></div>
+  <div class="container pb-5">
+    <div class="row">
+      <div class="col-md-8 col-lg-6 pb-5 hero-copy">
+        <p class="hero-brand mb-2">{{ SITE.name }}</p>
+        <h1 class="mb-3">出门在外，<br>毛孩子也有个家</h1>
+        <p class="lead opacity-75 mb-4">{{ SITE.slogan }}。专业护理师一对一照料，喂养、遛弯、洗护全程记录，打开手机就能看到 TA 的每一天。</p>
+        <div class="d-flex flex-wrap gap-2 hero-cta">
+          <a href="{% url 'web:room_list' %}" class="btn btn-primary btn-lg">查看可订房间</a>
+          <a href="#how" class="btn btn-light btn-lg">了解流程</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container stat-strip">
+  <form class="search-card mb-4" action="{% url 'web:room_list' %}" method="get">
+    <div class="row g-3 align-items-end">
+      <div class="col-6 col-lg-2">
+        <label class="form-label" for="{{ search_form.species.id_for_label }}">宠物类型</label>{{ search_form.species }}
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label" for="{{ search_form.room_type.id_for_label }}">房型</label>{{ search_form.room_type }}
+      </div>
+      <div class="col-6 col-lg-3">
+        <label class="form-label" for="{{ search_form.check_in.id_for_label }}">入住日期</label>{{ search_form.check_in }}
+      </div>
+      <div class="col-6 col-lg-3">
+        <label class="form-label" for="{{ search_form.check_out.id_for_label }}">离店日期</label>{{ search_form.check_out }}
+      </div>
+      <div class="col-12 col-lg-2 d-grid">
+        <button class="btn btn-primary btn-lg"><i class="bi bi-search me-1"></i>查空房</button>
+      </div>
+    </div>
+    <p class="small text-muted mt-3 mb-0"><i class="bi bi-gift me-1 text-primary"></i>连住 {{ SITE.long_stay_days }} 晚及以上享 {{ SITE.long_stay_rate }} 折 · 入住前免费取消</p>
+  </form>
+  <div class="row g-3">
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="num">{{ room_count }}</div><div class="small text-muted">间独立寄养房</div></div></div>
+    {% if avg_rating %}
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="num">{{ avg_rating|floatformat:1 }}</div><div class="small text-muted">平均评分 · {{ review_count }} 条</div></div></div>
+    {% else %}
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="num">NEW</div><div class="small text-muted">新店开业</div></div></div>
+    {% endif %}
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="num">24h</div><div class="small text-muted">监控与值守</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="num">100%</div><div class="small text-muted">入住疫苗核验</div></div></div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="section-title">
+      <div class="eyebrow">Why PawStay</div>
+      <h2>让分别变得安心的四个理由</h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="ps-card p-4 h-100">
+          <div class="feature-icon mb-3"><i class="bi bi-camera"></i></div>
+          <h5>护理动态实时可见</h5>
+          <p class="text-muted small mb-0">每次喂食、遛弯、洗护都有记录和照片，订单页按时间线展示，异常状况第一时间通知。</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="ps-card p-4 h-100">
+          <div class="feature-icon mb-3"><i class="bi bi-shield-plus"></i></div>
+          <h5>入住健康把关</h5>
+          <p class="text-muted small mb-0">疫苗有效期在线核验，过期不予入住；按体型、性格匹配房间，有攻击性的宠物单独安置。</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="ps-card p-4 h-100">
+          <div class="feature-icon mb-3"><i class="bi bi-house-heart"></i></div>
+          <h5>猫狗分区独立房</h5>
+          <p class="text-muted small mb-0">猫咪安静区与狗狗活动区完全分开，独立新风与恒温空调，减少应激与交叉感染。</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="ps-card p-4 h-100">
+          <div class="feature-icon mb-3"><i class="bi bi-receipt"></i></div>
+          <h5>价格透明可退</h5>
+          <p class="text-muted small mb-0">逐晚明细计价，节假日价格提前公示；入住前取消，已付款项原路全额退回。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section ambient-band pt-0">
+  <div class="container">
+    <div class="ambient-panel">
+      <img src="{% static 'img/stock/ambient-suite.jpg' %}" alt="温馨寄养套房实景" loading="lazy">
+      <div class="ambient-copy">
+        <p class="eyebrow">Space</p>
+        <h2>独立套房，像在家一样放松</h2>
+        <p class="mb-0 opacity-75">恒温新风、柔软睡垫与日常活动区，让每一次寄养都安心落地。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section pt-0">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
+      <div>
+        <div class="text-primary fw-bold small">ROOMS</div>
+        <h2 class="mb-0">精选寄养房间</h2>
+      </div>
+      <a href="{% url 'web:room_list' %}" class="btn btn-outline-primary">全部房间 <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-4">
+      {% for room in rooms %}
+        <div class="col-md-6 col-lg-4">{% include "web/_room_card.html" %}</div>
+      {% empty %}
+        <div class="col-12"><div class="empty-state"><i class="bi bi-house"></i><p class="mt-2">房间即将上线，敬请期待</p></div></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section bg-primary-soft" id="services">
+  <div class="container">
+    <div class="section-title">
+      <div class="eyebrow">Services</div>
+      <h2>每一天的用心照料</h2>
+      <p class="text-muted">寄养期间的基础护理全部包含在房费中，无隐藏收费</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="service-tile"><img src="{% static 'img/stock/service-feeding.jpg' %}" alt="定时喂养" loading="lazy">
+          <div class="body"><h5 class="mb-1">定时定量喂养</h5><p class="small mb-0 opacity-75">按家中习惯喂食，记录每餐进食量</p></div></div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="service-tile"><img src="{% static 'img/stock/service-walk.jpg' %}" alt="户外遛弯" loading="lazy">
+          <div class="body"><h5 class="mb-1">每日户外遛弯</h5><p class="small mb-0 opacity-75">狗狗每天两次牵引散步，释放精力</p></div></div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="service-tile"><img src="{% static 'img/stock/service-grooming.jpg' %}" alt="清洁洗护" loading="lazy">
+          <div class="body"><h5 class="mb-1">清洁与洗护</h5><p class="small mb-0 opacity-75">梳毛、擦脚、离店前洗澡吹干</p></div></div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="service-tile"><img src="{% static 'img/stock/service-health.jpg' %}" alt="健康观察" loading="lazy">
+          <div class="body"><h5 class="mb-1">健康观察</h5><p class="small mb-0 opacity-75">每日检查精神与排便，异常即时告知</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-title">
+      <div class="eyebrow">How it works</div>
+      <h2>四步完成预约</h2>
+    </div>
+    <div class="row g-4 text-center">
+      <div class="col-6 col-lg-3">
+        <div class="feature-icon mx-auto mb-3"><i class="bi bi-person-plus"></i></div>
+        <h6>1. 注册并建档</h6><p class="small text-muted">填写宠物体重、性格、疫苗有效期</p>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="feature-icon mx-auto mb-3"><i class="bi bi-calendar-check"></i></div>
+        <h6>2. 选房下单</h6><p class="small text-muted">系统自动匹配可住房间并计算价格</p>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="feature-icon mx-auto mb-3"><i class="bi bi-wallet2"></i></div>
+        <h6>3. 在线支付</h6><p class="small text-muted">支付后锁定房间，入住前可免费取消</p>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="feature-icon mx-auto mb-3"><i class="bi bi-phone"></i></div>
+        <h6>4. 随时看动态</h6><p class="small text-muted">护理记录、照片与健康状态实时推送</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if reviews %}
+<section class="section pt-0">
+  <div class="container">
+    <div class="section-title">
+      <div class="eyebrow">Reviews</div>
+      <h2>主人们怎么说</h2>
+      <p class="text-muted"><span class="stars">{% for _ in avg_rating|stars %}★{% endfor %}</span> {{ avg_rating|floatformat:1 }} 分 · {{ review_count }} 条评价</p>
+    </div>
+    <div class="row g-4">
+      {% for review in reviews %}
+      <div class="col-md-6 col-lg-4">
+        <div class="ps-card review-card">
+          <div class="stars mb-2">{% for _ in review.rating|stars %}★{% endfor %}</div>
+          <p class="mb-3">“{{ review.content }}”</p>
+          <div class="d-flex align-items-center gap-2">
+            <img class="avatar" src="{% image_url review.order.pet size=160 %}" alt="{{ review.order.pet.name }}">
+            <div class="small">
+              <div class="fw-semibold">{{ review.order.pet.name }} 的主人</div>
+              <div class="text-muted">{{ review.order.room.display_name }} · {{ review.created_at|date:"Y-m-d" }}</div>
+            </div>
+          </div>
+          {% if review.reply %}<div class="small text-muted mt-3 border-top pt-2"><i class="bi bi-chat-heart text-primary me-1"></i>门店回复：{{ review.reply }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section pt-0" id="faq">
+  <div class="container"><div class="wrap-md">
+    <div class="section-title">
+      <div class="eyebrow">FAQ</div>
+      <h2>常见问题</h2>
+    </div>
+    <div class="accordion faq" id="faqList">
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#q1">入住需要准备什么？</button></h2>
+        <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqList"><div class="accordion-body text-muted">请携带有效期内的疫苗本、宠物日常口粮（可减少换粮应激）以及熟悉的小毯子或玩具。疫苗有效期需覆盖整个寄养期间，可在“我的宠物”中提前登记。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2">可以取消或修改预约吗？</button></h2>
+        <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">入住前可在订单页随时取消，已支付金额原路全额退回。如需更换日期，请取消后重新预约，或致电 {{ SITE.phone }} 由门店协助调整。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">房间满了怎么办？</button></h2>
+        <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">查询无空房时可一键加入候补。一旦有其他主人取消或提前离店，系统会立即通知您，并带好日期直接跳转预约。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4">价格怎么计算？</button></h2>
+        <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">按晚计价，离店当天不计费。春节、国庆等假期会按公示倍率调整，连住 {{ SITE.long_stay_days }} 晚及以上整单 {{ SITE.long_stay_rate }} 折。下单前可看到逐晚价格明细。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q5">宠物在寄养期间生病了怎么办？</button></h2>
+        <div id="q5" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">护理师每天观察精神、食欲和排便情况。一旦记录为异常，系统会立即向您发送提醒，门店也会电话联系您，并在征得同意后送往合作宠物医院。</div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="container">
+  <div class="cta text-center" style="background-image: url('{% static 'img/stock/cta.jpg' %}');">
+    <h2 class="mb-3">假期就要到了，给 TA 订个好房间吧</h2>
+    <p class="mb-4 opacity-75">热门日期房间紧张，提前预约更安心</p>
+    <a href="{% url 'web:room_list' %}" class="btn btn-light btn-lg text-primary">立即查看空房</a>
+  </div>
+</section>
+{% endblock %}

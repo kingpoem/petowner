@@ -1,0 +1,49 @@
+{% extends "web/me_base.html" %}
+{% load web_tags %}
+
+{% block title %}我的宠物{% endblock %}
+
+{% block main %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">我的宠物</h1>
+  <a class="btn btn-primary" href="{% url 'web:pet_create' %}"><i class="bi bi-plus-lg me-1"></i>添加宠物</a>
+</div>
+<div class="row g-4">
+  {% for pet in pets %}
+  <div class="col-md-6">
+    <div class="ps-card h-100">
+      <div class="d-flex gap-3 p-4">
+        <img class="avatar-lg" src="{% image_url pet size=160 %}" alt="{{ pet.name }}">
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between">
+            <h5 class="mb-1">{{ pet.name }}</h5>
+            <span class="small text-muted">{{ pet.code }}</span>
+          </div>
+          <div class="small text-muted mb-2">{{ pet.get_species_display }} · {{ pet.breed }} · {{ pet.get_gender_display }} · {{ pet.age }} 岁 · {{ pet.weight }}kg</div>
+          <div class="small">
+            <span class="amenity">{{ pet.get_temperament_display }}</span>
+            {% if pet.sterilized %}<span class="amenity">已绝育</span>{% endif %}
+            <span class="amenity">寄养 {{ pet.order_count }} 次</span>
+          </div>
+          <div class="small mt-2">
+            <i class="bi bi-shield-check me-1 {% if pet.vaccine_expiry %}text-success{% else %}text-danger{% endif %}"></i>
+            疫苗：{% if pet.vaccine_expiry %}有效期至 {{ pet.vaccine_expiry|date:"Y-m-d" }}{% else %}<span class="text-danger">未登记</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="border-top px-4 py-2 d-flex justify-content-end gap-2">
+        <a class="btn btn-sm btn-light" href="{% url 'web:pet_edit' pet.pk %}"><i class="bi bi-pencil me-1"></i>编辑</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'web:booking_create' %}?pet={{ pet.pk }}">为 TA 预约</a>
+        {% if not pet.order_count %}
+          <form method="post" action="{% url 'web:pet_delete' pet.pk %}" data-confirm="确定删除 {{ pet.name }} 的档案吗？">{% csrf_token %}
+            <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="ps-card empty-state"><i class="bi bi-heart"></i><p class="mt-2">还没有宠物档案</p><a class="btn btn-primary" href="{% url 'web:pet_create' %}">添加第一只宠物</a></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

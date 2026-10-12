@@ -1,0 +1,89 @@
+{% extends "staff/base.html" %}
+{% load web_tags %}
+
+{% block title %}员工工作台{% endblock %}
+
+{% block content %}
+<nav class="staff-tabs mb-3" aria-label="订单分组">
+  {% for key, label, icon, count in tabs %}
+    <a class="staff-tab {% if key == tab %}active{% endif %}" href="?tab={{ key }}"{% if key == tab %} aria-current="page"{% endif %}>
+      <i class="bi {{ icon }}"></i><span>{{ label }}</span><span class="count">{{ count }}</span>
+    </a>
+  {% endfor %}
+</nav>
+
+<form class="mb-3" method="get" role="search">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div class="input-group">
+    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="宠物名 / 主人 / 手机号 / 房间号 / 订单号" aria-label="搜索">
+  </div>
+</form>
+
+{% for order in orders %}
+  {% with pet=order.pet owner=order.pet.owner %}
+  <article class="staff-card">
+    <div class="d-flex gap-3">
+      <img class="avatar-lg" src="{% image_url pet size=160 %}" alt="{{ pet.name }}">
+      <div class="flex-grow-1 min-w-0">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <h2 class="h6 fw-bold mb-0 text-truncate">{{ pet.name }}</h2>
+          <span class="room-tag">{{ order.room.number }}</span>
+        </div>
+        <div class="small text-muted text-truncate">{{ pet.breed|default:pet.get_species_display }} · {{ pet.weight|floatformat:"-1" }}kg · {{ pet.get_temperament_display }}</div>
+        <div class="small">{{ order.check_in|date:"n月j日" }} → {{ order.check_out|date:"n月j日" }}（{{ order.days }} 晚）{% if order.check_out == today and order.status == 'checked_in' %} <span class="badge text-bg-warning">今日离店</span>{% endif %}</div>
+      </div>
+    </div>
+
+    <div class="chips mt-2">
+      {% if pet.allergies %}<span class="chip chip-danger"><i class="bi bi-exclamation-octagon"></i>过敏：{{ pet.allergies }}</span>{% endif %}
+      {% if pet.health_status and pet.health_status != "健康" %}<span class="chip chip-danger"><i class="bi bi-heart-pulse"></i>{{ pet.health_status }}</span>{% endif %}
+      {% if pet.temperament == "aggressive" or pet.temperament == "timid" %}<span class="chip chip-warning"><i class="bi bi-emoji-neutral"></i>{{ pet.get_temperament_display }}，接触需谨慎</span>{% endif %}
+      {% if pet.diet_notes %}<span class="chip"><i class="bi bi-cup-hot"></i>{{ pet.diet_notes }}</span>{% endif %}
+      {% if order.note %}<span class="chip"><i class="bi bi-chat-left-text"></i>{{ order.note }}</span>{% endif %}
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small mt-2 pt-2 border-top">
+      <span><i class="bi bi-person me-1"></i>{{ owner.name }} <a href="tel:{{ owner.phone }}" class="ms-1"><i class="bi bi-telephone"></i> {{ owner.phone }}</a></span>
+      {% if order.status == 'checked_in' %}
+        <span class="{% if not order.care_today %}text-danger{% else %}text-muted{% endif %}">
+          {% if order.last_care %}上次记录 {{ order.last_care|timesince }}前 · 今日 {{ order.care_today }} 条{% else %}尚无护理记录{% endif %}
+        </span>
+      {% else %}
+        <span class="badge rounded-pill text-bg-{{ order.payment_status|badge }}">{{ order.get_payment_status_display }}</span>
+      {% endif %}
+    </div>
+
+    <div class="staff-actions mt-3">
+      {% if order.status == 'pending' %}
+        <form method="post" action="{% url 'staff:check_in' order.pk %}" data-confirm="确认 {{ pet.name }} 已到店，办理入住 {{ order.room.display_name }}？">
+          {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right me-1"></i>办理入住</button>
+        </form>
+      {% else %}
+        <a class="btn btn-primary" href="{% url 'staff:care' order.pk %}"><i class="bi bi-camera me-1"></i>记录护理</a>
+        {% if order.check_out <= today %}
+          <form method="post" action="{% url 'staff:check_out' order.pk %}" data-confirm="确认 {{ pet.name }} 已被接走，办理离店？">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-outline-secondary w-100"><i class="bi bi-box-arrow-right me-1"></i>办理离店</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% if order.can_pay %}
+      <form class="collect-row mt-2" method="post" action="{% url 'staff:collect' order.pk %}" data-confirm="确认已向顾客收取 ¥{{ order.balance_due }}？">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <span class="small text-warning-emphasis fw-semibold"><i class="bi bi-wallet2 me-1"></i>待收 ¥{{ order.balance_due }}</span>
+        <button class="btn btn-sm btn-outline-success" name="method" value="cash">现金</button>
+        <button class="btn btn-sm btn-outline-success" name="method" value="card">刷卡</button>
+      </form>
+    {% endif %}
+  </article>
+  {% endwith %}
+{% empty %}
+  <div class="empty-state py-5">
+    <i class="bi bi-clipboard-check"></i>
+    <p class="mt-2 mb-0">{% if query %}没有找到“{{ query }}”相关的订单{% elif tab == 'arrivals' %}今天没有待入住的预约{% elif tab == 'departures' %}今天没有需要离店的宠物{% else %}当前没有在住宠物{% endif %}</p>
+  </div>
+{% endfor %}
+{% endblock %}

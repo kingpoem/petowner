@@ -1,0 +1,15 @@
+.git
+.venv
+.cache
+.ruff_cache
+.idea
+.vscode
+**/__pycache__
+*.py[cod]
+*.log
+.env
+media
+staticfiles
+docs
+backups
+.github

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}在线预约{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1>在线预约</h1>
+    <p class="text-muted mb-0">选择宠物、房间与日期，系统将实时校验空房、疫苗与房间适配</p>
+  </div>
+  <form method="post" class="row g-4" novalidate data-quote-url="{% url 'web:quote_preview' %}" data-quote-target="#quoteBox">
+    {% csrf_token %}
+    <div class="col-lg-7">
+      <div class="ps-card p-4">
+        {% if form.non_field_errors %}<div class="alert alert-danger small">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+        {% include "web/_field.html" with field=form.pet %}
+        <div class="small text-end mb-3" style="margin-top:-.5rem;"><a href="{% url 'web:pet_create' %}?next={{ request.get_full_path|urlencode }}">+ 添加新宠物</a></div>
+        {% include "web/_field.html" with field=form.room %}
+        <div class="row">
+          <div class="col-6">{% include "web/_field.html" with field=form.check_in %}</div>
+          <div class="col-6">{% include "web/_field.html" with field=form.check_out %}</div>
+        </div>
+        {% include "web/_field.html" with field=form.note %}
+        <div class="row">
+          <div class="col-md-6">{% include "web/_field.html" with field=form.coupon_code %}</div>
+          <div class="col-md-6">{% include "web/_field.html" with field=form.redeem_points %}</div>
+        </div>
+        <p class="small text-muted mb-0"><i class="bi bi-calculator me-1"></i>修改房间、日期、优惠码或积分后，右侧费用会自动试算</p>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="ps-card p-4 sticky-lg-top" style="top: 90px;">
+        <h5 class="mb-3">费用明细</h5>
+        <div id="quoteBox" class="quote-live" aria-live="polite">{% include "web/orders/_quote.html" %}</div>
+        <button class="btn btn-primary btn-lg w-100 mt-3">提交预约</button>
+        <p class="small text-muted mt-3 mb-0"><i class="bi bi-shield-check me-1"></i>提交后请在订单页完成支付；入住日前可免费取消或改期</p>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

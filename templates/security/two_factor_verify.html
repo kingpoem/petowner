@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+{% block usertools %}{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <form method="post" id="login-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <p>您好，{{ user.get_full_name|default:user.get_username }}。请打开手机上的身份验证器，输入 {{ SITE.name|default:"本站" }} 的 6 位动态码。</p>
+    {% if error %}<p class="errornote">{{ error }}</p>{% endif %}
+    <div class="form-row">
+      <label for="id_code" class="required">动态码：</label>
+      <input id="id_code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" autofocus required>
+    </div>
+    <div class="submit-row">
+      <input type="submit" value="验证">
+    </div>
+  </form>
+  <form method="post" action="{% url 'admin:logout' %}" class="otp-logout">
+    {% csrf_token %}
+    <p class="help">手机丢失或更换？请联系超级管理员在“二次验证设备”中重置。<button type="submit" class="link-button">退出登录</button></p>
+  </form>
+</div>
+{% endblock %}

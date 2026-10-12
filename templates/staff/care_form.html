@@ -1,0 +1,70 @@
+{% extends "staff/base.html" %}
+{% load web_tags %}
+
+{% block title %}记录护理 · {{ order.pet.name }}{% endblock %}
+{% block back %}<a class="btn btn-sm btn-light rounded-circle" href="{% url 'staff:board' %}?tab=boarding" aria-label="返回工作台"><i class="bi bi-chevron-left"></i></a>{% endblock %}
+{% block heading %}{{ order.pet.name }} · {{ order.room.number }}{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate class="staff-card">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger small">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+
+  <label class="form-label fw-semibold small" for="{{ form.care_content.id_for_label }}">护理内容 <span class="text-danger">*</span></label>
+  <div class="phrase-groups mb-2">
+    {% for group, items in phrases.items %}
+      <div class="phrase-row"><span class="text-muted small">{{ group }}</span>
+        {% for item in items %}<button type="button" class="btn btn-sm btn-light phrase" data-fill-target="#{{ form.care_content.id_for_label }}" data-fill="{{ item }}">{{ item }}</button>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  {{ form.care_content }}
+  {% for e in form.care_content.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+
+  <div class="mt-3">
+    <div class="form-label fw-semibold small">{{ form.appetite.label }}</div>
+    <div class="choice-pills">
+      {% for choice in form.appetite %}
+        {{ choice.tag }}<label class="btn btn-sm btn-outline-secondary" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <div class="form-label fw-semibold small">{{ form.health_status.label }}</div>
+    <div class="choice-pills health">
+      {% for choice in form.health_status %}
+        {{ choice.tag }}<label class="btn btn-sm btn-outline-{{ choice.data.value|badge }}" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <label class="form-label fw-semibold small" for="{{ form.health_note.id_for_label }}">{{ form.health_note.label }}</label>
+    {{ form.health_note }}
+    {% for e in form.health_note.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  </div>
+
+  <div class="mt-3">
+    <label class="form-label fw-semibold small" for="{{ form.photo.id_for_label }}"><i class="bi bi-camera me-1"></i>现场照片（主人可在订单中查看）</label>
+    <img id="carePhotoPreview" class="care-preview mb-2" alt="" hidden>
+    {{ form.photo }}
+    {% for e in form.photo.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  </div>
+
+  <button class="btn btn-primary btn-lg w-100 mt-4"><i class="bi bi-send me-1"></i>保存并通知主人</button>
+</form>
+
+{% if recent %}
+<section class="mt-4">
+  <h2 class="h6 text-muted">最近记录</h2>
+  {% for record in recent %}
+    <div class="staff-card py-2 small">
+      <div class="d-flex justify-content-between"><span class="fw-semibold">{{ record.feeding_time|date:"n月j日 H:i" }}</span><span class="badge rounded-pill text-bg-{{ record.health_status|badge }}">{{ record.get_health_status_display }}</span></div>
+      <div>{{ record.care_content }}</div>
+      <div class="text-muted">{{ record.staff }}</div>
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

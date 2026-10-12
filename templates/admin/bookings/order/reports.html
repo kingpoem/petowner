@@ -1,0 +1,100 @@
+{% extends "admin/base_site.html" %}
+{% load humanize static %}
+
+{% block extrahead %}{{ block.super }}
+<script src="{% static 'js/admin-reports.js' %}" defer></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">首页</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+{% with k=report.kpis %}
+<div id="content-main" class="ps-report">
+  <form method="get" class="ps-report-filter">
+    <div class="ps-presets" role="radiogroup" aria-label="统计周期">
+      {% for value, label in form.fields.preset.choices %}
+        <label class="ps-preset">
+          <input type="radio" name="preset" value="{{ value }}" {% if form.preset.value|default:'30' == value %}checked{% endif %}>
+          <span>{{ label }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    <span class="ps-custom">{{ form.start }} 至 {{ form.end }}</span>
+    <input type="submit" class="default" value="查看">
+    <span class="ps-export">
+      <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=xlsx">导出 Excel</a>
+      <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=daily">导出每日 CSV</a>
+      <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=orders">导出订单 CSV</a>
+    </span>
+  </form>
+  <p class="help">统计区间：{{ report.start|date:"Y年n月j日" }} – {{ report.end|date:"Y年n月j日" }}（{{ report.days|length }} 天）。收入按实际收退款流水统计；入住率含已预订未入住的间夜。</p>
+
+  <div class="ps-dash">
+    <div class="ps-kpi"><div class="l">净收入（元）</div><div class="v">{{ k.net|floatformat:2|intcomma }}</div><div class="s">收款 {{ k.income|floatformat:2|intcomma }} · 退款 {{ k.refund|floatformat:2|intcomma }}</div></div>
+    <div class="ps-kpi"><div class="l">入住率</div><div class="v">{{ k.occupancy|floatformat:1 }}%</div><div class="s">已售 {{ k.nights }} 间夜</div></div>
+    <div class="ps-kpi"><div class="l">平均每间夜收入</div><div class="v">¥{{ k.adr|floatformat:2 }}</div><div class="s">净收入 ÷ 已售间夜</div></div>
+    <div class="ps-kpi"><div class="l">新增订单</div><div class="v">{{ k.orders }}</div><div class="s">取消率 {{ k.cancel_rate|floatformat:1 }}%</div></div>
+    <div class="ps-kpi"><div class="l">平均寄养时长</div><div class="v">{{ k.avg_stay|floatformat:1 }} 晚</div><div class="s">不含已取消订单</div></div>
+    <div class="ps-kpi"><div class="l">复购顾客占比</div><div class="v">{{ k.repeat_rate|floatformat:0 }}%</div><div class="s">累计下单 ≥ 2 次</div></div>
+  </div>
+
+  <div class="ps-panel ps-chart-panel">
+    <h3>{% if report.monthly %}月度{% else %}每日{% endif %}净收入与入住率 <span class="ps-legend"><i class="bar"></i>净收入 <i class="line"></i>入住率</span></h3>
+    <svg class="ps-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="净收入与入住率趋势图">
+      {% for t in chart.ticks %}
+        <line class="grid" x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ t.y }}" y2="{{ t.y }}"></line>
+        <text class="axis" x="{{ chart.left|add:'-6' }}" y="{{ t.y }}" text-anchor="end" dominant-baseline="middle">{{ t.money }}</text>
+        <text class="axis" x="{{ chart.right|add:'6' }}" y="{{ t.y }}" dominant-baseline="middle">{{ t.pct }}</text>
+      {% endfor %}
+      {% for b in chart.bars %}
+        <rect class="bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3"><title>{{ b.label }}：净收入 ¥{{ b.net }}，入住率 {{ b.occupancy }}%</title></rect>
+        {% if b.show_label %}<text class="axis" x="{{ b.cx }}" y="{{ chart.label_y }}" text-anchor="middle">{{ b.label }}</text>{% endif %}
+      {% endfor %}
+      <polyline class="line" points="{{ chart.line }}"></polyline>
+    </svg>
+  </div>
+
+  <div class="ps-panels">
+    <div class="ps-panel">
+      <h3>房型表现</h3>
+      <table class="ps-table">
+        <thead><tr><th>房型</th><th>新订单</th><th>间夜</th><th>入住率</th><th>净收入</th></tr></thead>
+        <tbody>
+          {% for s in report.room_types %}
+            <tr><td>{{ s.label }}</td><td>{{ s.orders }}</td><td>{{ s.nights }}</td><td>{{ s.occupancy|floatformat:0 }}%</td>
+              <td><div class="ps-share"><span style="width: {{ s.share|floatformat:0 }}%"></span></div>¥{{ s.revenue|floatformat:2|intcomma }}</td></tr>
+          {% empty %}<tr><td colspan="5">暂无数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="ps-panel">
+      <h3>下单渠道</h3>
+      <table class="ps-table">
+        <thead><tr><th>渠道</th><th>新订单</th><th>间夜</th><th>净收入</th></tr></thead>
+        <tbody>
+          {% for s in report.channels %}
+            <tr><td>{{ s.label }}</td><td>{{ s.orders }}</td><td>{{ s.nights }}</td>
+              <td><div class="ps-share"><span style="width: {{ s.share|floatformat:0 }}%"></span></div>¥{{ s.revenue|floatformat:2|intcomma }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <h3 class="ps-mt">支付方式</h3>
+      <table class="ps-table">
+        <thead><tr><th>方式</th><th>净收入</th><th>占比</th></tr></thead>
+        <tbody>
+          {% for s in report.methods %}
+            <tr><td>{{ s.label }}</td><td>¥{{ s.revenue|floatformat:2|intcomma }}</td><td>{{ s.share|floatformat:1 }}%</td></tr>
+          {% empty %}<tr><td colspan="3">暂无收款</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

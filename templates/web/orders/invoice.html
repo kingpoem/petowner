@@ -1,0 +1,34 @@
+{% extends "web/me_base.html" %}
+
+{% block title %}开具收据{% endblock %}
+
+{% block main %}
+<div class="page-header">
+  <h1>开具电子收据</h1>
+  <p class="text-muted mb-0">订单 {{ order.order_no }} · 可开具金额 ¥{{ order.net_paid }}</p>
+</div>
+<form method="post" class="ps-card p-4 wrap-md">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label">抬头类型</label>
+    <select name="kind" class="form-select">
+      <option value="personal">个人收据</option>
+      <option value="company">企业抬头</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">抬头名称</label>
+    <input class="form-control" name="title" value="{{ request.owner.name }}" required maxlength="120">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">税号（企业选填）</label>
+    <input class="form-control" name="tax_no" maxlength="40">
+  </div>
+  <div class="mb-4">
+    <label class="form-label">接收邮箱</label>
+    <input class="form-control" type="email" name="email" value="{{ request.owner.email }}">
+  </div>
+  <button class="btn btn-primary">生成并下载 PDF</button>
+  <a class="btn btn-light ms-2" href="{{ order.get_absolute_url }}">返回订单</a>
+</form>
+{% endblock %}

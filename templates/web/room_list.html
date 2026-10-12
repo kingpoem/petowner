@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}寄养房间{% endblock %}
+
+{% block content %}
+<div class="room-list-hero">
+  <div class="container">
+    <div class="page-header mb-0">
+      <p class="eyebrow text-primary mb-2">{{ CURRENT_STORE.name|default:SITE.name }}</p>
+      <h1>寄养房间</h1>
+      <p class="text-muted mb-0">选择日期查看实时空房与总价；系统会按宠物类型、体型与房间容量自动匹配</p>
+    </div>
+  </div>
+</div>
+
+<div class="container room-list-body">
+  <form class="ps-card search-panel p-3 p-md-4 mb-4" method="get">
+    <div class="row g-3 align-items-end">
+      <div class="col-6 col-lg-2">
+        <label class="form-label small fw-semibold text-muted" for="{{ form.species.id_for_label }}">宠物类型</label>{{ form.species }}
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label small fw-semibold text-muted" for="{{ form.room_type.id_for_label }}">房型</label>{{ form.room_type }}
+      </div>
+      <div class="col-6 col-lg-3">
+        <label class="form-label small fw-semibold text-muted" for="{{ form.check_in.id_for_label }}">入住日期</label>{{ form.check_in }}
+      </div>
+      <div class="col-6 col-lg-3">
+        <label class="form-label small fw-semibold text-muted" for="{{ form.check_out.id_for_label }}">离店日期</label>{{ form.check_out }}
+      </div>
+      <div class="col-12 col-lg-2 d-grid">
+        <button class="btn btn-primary"><i class="bi bi-search me-1"></i>查询空房</button>
+      </div>
+    </div>
+    {% if form.is_bound and form.errors %}
+      <div class="text-danger small mt-2">{% for field in form %}{% for e in field.errors %}{{ field.label }}：{{ e }} {% endfor %}{% endfor %}</div>
+    {% endif %}
+  </form>
+
+  {% if searched %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">{{ form.cleaned_data.check_in|date:"n月j日" }} - {{ form.cleaned_data.check_out|date:"n月j日" }} 可订 {{ results|length }} 间</h5>
+      <a href="{% url 'web:room_list' %}" class="small">清除条件</a>
+    </div>
+    {% if results %}
+      <div class="row g-4">
+        {% for room, quote in results %}
+          <div class="col-md-6 col-lg-4">
+            {% include "web/_room_card.html" with query=request.GET.urlencode check_in=form.cleaned_data.check_in check_out=form.cleaned_data.check_out %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ps-card empty-state">
+        <i class="bi bi-calendar-x"></i>
+        <h5 class="mt-3 text-body">所选日期暂无空房</h5>
+        <p>可以调整日期，或加入候补，有房时我们会第一时间通知您。</p>
+        {% if waitlist_form %}
+          <form method="post" action="{% url 'web:waitlist_create' %}" class="row g-2 justify-content-center mt-2" style="max-width: 640px; margin: auto;">
+            {% csrf_token %}
+            <div class="col-sm-4">{{ waitlist_form.pet }}</div>
+            {{ waitlist_form.room_type.as_hidden }}{{ waitlist_form.check_in.as_hidden }}{{ waitlist_form.check_out.as_hidden }}
+            <div class="col-sm-auto d-grid"><button class="btn btn-primary"><i class="bi bi-bell me-1"></i>加入候补</button></div>
+          </form>
+        {% elif not user.is_authenticated %}
+          <a class="btn btn-primary" href="{% url 'web:login' %}?next={{ request.get_full_path|urlencode }}">登录后加入候补</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="row g-4" id="roomGrid">
+      {% for room in rooms %}
+        <div class="col-md-6 col-lg-4">{% include "web/_room_card.html" %}</div>
+      {% empty %}
+        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
+        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
+        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
+        <div class="col-12"><div class="empty-state"><i class="bi bi-house"></i><p class="mt-2">暂无可展示的房间</p></div></div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

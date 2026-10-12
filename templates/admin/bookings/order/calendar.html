@@ -1,0 +1,79 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">首页</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="ps-cal">
+  <form method="get" class="ps-cal-bar">
+    <a class="button" href="?start={{ prev|date:'Y-m-d' }}&nights={{ nights }}">← 前一周</a>
+    <label>起始日 <input type="date" name="start" value="{{ cal.start|date:'Y-m-d' }}"></label>
+    <label>天数
+      <select name="nights">
+        <option value="7" {% if nights == 7 %}selected{% endif %}>7 天</option>
+        <option value="14" {% if nights == 14 %}selected{% endif %}>14 天</option>
+        <option value="21" {% if nights == 21 %}selected{% endif %}>21 天</option>
+        <option value="31" {% if nights == 31 %}selected{% endif %}>31 天</option>
+      </select>
+    </label>
+    <input type="submit" class="default" value="查看">
+    <a class="button" href="?start={{ next|date:'Y-m-d' }}&nights={{ nights }}">后一周 →</a>
+    <span class="ps-cal-legend">
+      <i class="free"></i>空房 <i class="partial"></i>部分占用 <i class="full"></i>已满
+      · 入住 {{ cal.arrivals }} · 离店 {{ cal.departures }} · 入住率 {{ cal.occupancy|floatformat:1 }}%
+      {% if can_add %}<span class="hint">· 点击空格开单 · 点击占用改期</span>{% endif %}
+    </span>
+  </form>
+
+  <div class="ps-cal-scroll">
+    <table class="ps-cal-grid">
+      <thead>
+        <tr>
+          <th class="room">房间</th>
+          {% for day in cal.days %}
+            <th class="{% if day == cal.start %}is-start{% endif %}">
+              <span class="d">{{ day|date:"m/d" }}</span>
+              <span class="w">{{ day|date:"D" }}</span>
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in cal.rows %}
+        <tr>
+          <th class="room">
+            <a href="{% url 'admin:rooms_room_change' row.room.pk %}">{{ row.room.number }}</a>
+            <span class="meta">{{ row.room.get_room_type_display }} · {{ row.room.capacity }} 床</span>
+          </th>
+          {% for cell in row.cells %}
+            <td class="cell {{ cell.level }}" title="{{ cell.label }}">
+              {% if cell.orders %}
+                {% for o in cell.orders %}
+                  <a class="ps-cal-order" href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }}</a>{% if not forloop.last %}、{% endif %}
+                {% endfor %}
+              {% elif can_add %}
+                <a class="ps-cal-add"
+                   href="{% url 'admin:bookings_order_add' %}?room={{ row.room.pk }}&check_in={{ cell.date|date:'Y-m-d' }}&check_out={{ cell.next_day|date:'Y-m-d' }}"
+                   title="在此开单">+</a>
+              {% else %}
+                <span class="ps-cal-empty">空</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

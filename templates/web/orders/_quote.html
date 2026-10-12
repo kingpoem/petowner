@@ -1,0 +1,34 @@
+{% if quote %}
+  <div class="small">
+    {% for night in quote.nights %}
+      <div class="d-flex justify-content-between py-1">
+        <span>{{ night.day|date:"n月j日 D" }}{% if night.rule %} <span class="badge text-bg-warning">{{ night.rule }}</span>{% endif %}</span><span>¥{{ night.price }}</span>
+      </div>
+    {% endfor %}
+    {% if quote.discount %}<div class="d-flex justify-content-between py-1 text-success"><span>{{ quote.discount_label }}</span><span>-¥{{ quote.discount }}</span></div>{% endif %}
+    {% if loyalty %}
+      {% if loyalty.coupon_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>优惠码</span><span>-¥{{ loyalty.coupon_discount }}</span></div>{% endif %}
+      {% if loyalty.points_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>积分抵扣</span><span>-¥{{ loyalty.points_discount }}</span></div>{% endif %}
+      {% if loyalty.coupon_error %}<div class="text-danger py-1">{{ loyalty.coupon_error }}</div>{% endif %}
+      {% if loyalty.points_error %}<div class="text-danger py-1">{{ loyalty.points_error }}</div>{% endif %}
+    {% endif %}
+  </div>
+  <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-2">
+    <span>共 {{ quote.days }} 晚{% if loyalty and loyalty.extra_discount %} · 已优惠 ¥{{ loyalty.extra_discount }}{% endif %}</span>
+    <span class="price">¥{{ payable|default:quote.total }}</span>
+  </div>
+  {% if paid is not None %}
+    <div class="quote-settle mt-3">
+      <div class="d-flex justify-content-between small text-muted"><span>已付金额</span><span>¥{{ paid }}</span></div>
+      {% if top_up %}
+        <div class="d-flex justify-content-between fw-semibold text-warning-emphasis mt-1"><span><i class="bi bi-plus-circle me-1"></i>需补差价</span><span>¥{{ top_up }}</span></div>
+      {% elif refund %}
+        <div class="d-flex justify-content-between fw-semibold text-success mt-1"><span><i class="bi bi-arrow-return-left me-1"></i>原路退回</span><span>¥{{ refund }}</span></div>
+      {% else %}
+        <div class="d-flex justify-content-between fw-semibold text-success mt-1"><span><i class="bi bi-check-circle me-1"></i>无需补退差价</span><span>¥0.00</span></div>
+      {% endif %}
+    </div>
+  {% endif %}
+{% else %}
+  <p class="text-muted small mb-0">选择房间与日期后显示逐晚价格</p>
+{% endif %}

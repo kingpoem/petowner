@@ -1,0 +1,27 @@
+{% extends "web/me_base.html" %}
+
+{% block title %}服务评价{% endblock %}
+
+{% block main %}
+<div class="ps-card p-4" style="max-width: 680px;">
+  <h1 class="h4 mb-1">评价本次寄养</h1>
+  <p class="text-muted small mb-4">{{ order.pet.name }} · {{ order.room.display_name }} · {{ order.check_in|date:"n月j日" }} - {{ order.check_out|date:"n月j日" }}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="mb-4">
+      <label class="form-label fw-semibold small d-block">服务评分</label>
+      <div class="star-rating">
+        {% for choice in form.rating %}
+          <input type="radio" name="{{ form.rating.html_name }}" id="star{{ choice.data.value }}" value="{{ choice.data.value }}" {% if choice.data.selected %}checked{% endif %}>
+          <label for="star{{ choice.data.value }}" title="{{ choice.choice_label }}">★</label>
+        {% endfor %}
+      </div>
+      {% for e in form.rating.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    {% include "web/_field.html" with field=form.content %}
+    {% include "web/_field.html" with field=form.feedback %}
+    {% include "web/_field.html" with field=form.is_public %}
+    <button class="btn btn-primary">提交评价</button>
+  </form>
+</div>
+{% endblock %}
