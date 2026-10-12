@@ -45,7 +45,6 @@ class Order(models.Model):
     )
     pet = models.ForeignKey(Pet, verbose_name="宠物", on_delete=models.PROTECT, related_name="orders")
     room = models.ForeignKey(Room, verbose_name="寄养房间", on_delete=models.PROTECT, related_name="orders")
-    points_redeemed = models.PositiveIntegerField("抵扣积分", default=0, editable=False)
     check_in = models.DateField("入住时间")
     check_out = models.DateField("离店时间")
     discount = models.DecimalField("优惠金额（元）", max_digits=10, decimal_places=2, default=0, editable=False)
@@ -215,10 +214,6 @@ class Order(models.Model):
         self.save(update_fields=["payment_status", "paid_at", "updated_at"])
         title = "补款成功" if top_up else "支付成功"
         self._notify(title, f"订单 {self} 已支付 ¥{due}，期待 {self.pet.name} 的到来。", "success")
-        if not top_up:
-            from apps.loyalty.services import award_points
-
-            award_points(self.owner, due, order=self)
         return payment
 
     def mark_paid(self):
@@ -242,7 +237,6 @@ class Order(models.Model):
         if fee:
             detail += f"（入住当天取消，扣除首晚房费 ¥{fee}）"
         self._notify("预约已取消", f"订单 {self} 已取消{detail}。", "warning")
-        transaction.on_commit(process_waitlist)
 
     @transaction.atomic
     def reschedule(self, room: Room, check_in, check_out) -> Decimal:
@@ -318,13 +312,6 @@ class Order(models.Model):
         if refund:
             body += f"未入住的 {self.check_out:%m月%d日} 起房费 ¥{refund.amount} 已原路退回。"
         self._notify("寄养已完成", body, "success")
-        from apps.loyalty.services import issue_checkout_coupon
-
-        owner = self.owner
-        order_pk = self.pk
-        transaction.on_commit(lambda: issue_checkout_coupon(owner, Order.objects.filter(pk=order_pk).first()))
-        if released_early:
-            transaction.on_commit(process_waitlist)
 
 
 class Payment(models.Model):
@@ -376,39 +363,6 @@ class Payment(models.Model):
         if self.status != self.Status.SUCCESS:
             return Decimal("0.00")
         return -self.amount if self.kind == self.Kind.REFUND else self.amount
-
-
-class Waitlist(models.Model):
-    class Status(models.TextChoices):
-        WAITING = "waiting", "候补中"
-        NOTIFIED = "notified", "已通知有房"
-        BOOKED = "booked", "已转预约"
-        CANCELLED = "cancelled", "已取消"
-
-    pet = models.ForeignKey(Pet, verbose_name="宠物", on_delete=models.CASCADE, related_name="waitlist_entries")
-    room_type = models.CharField("期望房型", max_length=20, choices=Room.RoomType, blank=True)
-    check_in = models.DateField("入住时间")
-    check_out = models.DateField("离店时间")
-    status = models.CharField("状态", max_length=20, choices=Status, default=Status.WAITING)
-    notified_at = models.DateTimeField("通知时间", null=True, blank=True)
-    created_at = models.DateTimeField("登记时间", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "候补登记"
-        verbose_name_plural = verbose_name
-        ordering = ["created_at"]
-
-    def __str__(self):
-        return f"{self.pet.name} {self.check_in:%m-%d}~{self.check_out:%m-%d}"
-
-    def clean(self):
-        if self.check_in and self.check_out and self.check_out <= self.check_in:
-            raise ValidationError({"check_out": "离店时间必须晚于入住时间"})
-
-    def available_rooms(self) -> list[Room]:
-        return find_available_rooms(
-            self.pet.species, self.check_in, self.check_out, pet=self.pet, room_type=self.room_type
-        )
 
 
 def room_problem_for_pet(room: Room, pet: Pet, check_out) -> tuple[str, str] | None:
@@ -505,30 +459,3 @@ def expire_unpaid_orders() -> int:
         order.cancel(f"超过 {settings.PAYMENT_TIMEOUT_MINUTES} 分钟未支付，系统自动取消")
         count += 1
     return count
-
-
-def process_waitlist() -> int:
-    """检查候补队列，为已有空房的候补发送通知；返回通知数量。"""
-    notified = 0
-    entries = Waitlist.objects.filter(status=Waitlist.Status.WAITING, check_in__gte=timezone.localdate())
-    for entry in entries.select_related("pet__owner"):
-        rooms = entry.available_rooms()
-        if not rooms:
-            continue
-        entry.status = Waitlist.Status.NOTIFIED
-        entry.notified_at = timezone.now()
-        entry.save(update_fields=["status", "notified_at"])
-        url = (
-            reverse("web:booking_create")
-            + f"?room={rooms[0].pk}&pet={entry.pet_id}&check_in={entry.check_in}&check_out={entry.check_out}"
-        )
-        notify_owner(
-            entry.pet.owner,
-            "候补有房啦",
-            f"{entry.check_in:%m月%d日}~{entry.check_out:%m月%d日} 已有可用房间，先到先得，请尽快预约。",
-            url,
-            Notification.Level.SUCCESS,
-            sms_event="waitlist",
-        )
-        notified += 1
-    return notified

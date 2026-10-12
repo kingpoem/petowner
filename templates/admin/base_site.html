@@ -20,9 +20,4 @@
 {% endif %}
 {% endblock %}
 
-{% block userlinks %}
-  {% if user.is_active and user.is_staff %}<a href="{% url 'security:2fa_setup' %}">二次验证</a> /{% endif %}
-  {{ block.super }}
-{% endblock %}
-
 {% block nav-global %}{% endblock %}

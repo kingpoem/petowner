@@ -6,15 +6,9 @@
       </div>
     {% endfor %}
     {% if quote.discount %}<div class="d-flex justify-content-between py-1 text-success"><span>{{ quote.discount_label }}</span><span>-¥{{ quote.discount }}</span></div>{% endif %}
-    {% if loyalty %}
-      {% if loyalty.coupon_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>优惠码</span><span>-¥{{ loyalty.coupon_discount }}</span></div>{% endif %}
-      {% if loyalty.points_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>积分抵扣</span><span>-¥{{ loyalty.points_discount }}</span></div>{% endif %}
-      {% if loyalty.coupon_error %}<div class="text-danger py-1">{{ loyalty.coupon_error }}</div>{% endif %}
-      {% if loyalty.points_error %}<div class="text-danger py-1">{{ loyalty.points_error }}</div>{% endif %}
-    {% endif %}
   </div>
   <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-2">
-    <span>共 {{ quote.days }} 晚{% if loyalty and loyalty.extra_discount %} · 已优惠 ¥{{ loyalty.extra_discount }}{% endif %}</span>
+    <span>共 {{ quote.days }} 晚</span>
     <span class="price">¥{{ payable|default:quote.total }}</span>
   </div>
   {% if paid is not None %}

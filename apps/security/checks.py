@@ -17,12 +17,4 @@ def check_security_settings(app_configs, **kwargs):
         (settings.SMS_ACCESS_KEY_ID, settings.SMS_ACCESS_KEY_SECRET, settings.SMS_SIGN_NAME, settings.SMS_TEMPLATE_CODE)
     ):
         issues.append(Warning("阿里云短信配置不完整。", hint="检查 SMS_* 配置项。", id="security.W002"))
-    if not settings.ADMIN_REQUIRE_2FA:
-        issues.append(
-            Warning(
-                "后台未强制启用二次验证。",
-                hint="设置 ADMIN_REQUIRE_2FA=true，员工首次登录后台时将被引导绑定身份验证器。",
-                id="security.W003",
-            )
-        )
     return issues

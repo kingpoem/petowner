@@ -11,9 +11,7 @@ admin.site.site_url = "/"
 urlpatterns = [
     path("", include("apps.security.urls")),
     path("", include("apps.payments.urls")),
-    path("api/", include("apps.api.urls")),
     path("admin/", admin.site.urls),
-    path("staff/", include("apps.staff.urls")),
     path("", include("apps.web.urls")),
 ]
 

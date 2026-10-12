@@ -1,8 +1,6 @@
 import re
-from decimal import Decimal
 
 from django import forms
-from django.conf import settings
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
@@ -10,12 +8,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from apps.bookings.models import Order, Payment, Waitlist
+from apps.bookings.models import Order, Payment
 from apps.care.models import Review
-from apps.loyalty.services import lookup_coupon
 from apps.pets.models import Owner, Pet, Species
 from apps.rooms.models import Room
-from apps.rooms.pricing import quote
 from apps.security.forms import LoginGuardMixin, SmsCodeField, SmsVerifyMixin
 
 PHONE_RE = re.compile(r"^1\d{10}$")
@@ -185,28 +181,15 @@ class SearchForm(BootstrapMixin, DateRangeMixin, forms.Form):
 
 
 class BookingForm(BootstrapMixin, forms.ModelForm):
-    coupon_code = forms.CharField(label="优惠码（选填）", max_length=30, required=False)
-    redeem_points = forms.IntegerField(
-        label="使用积分",
-        required=False,
-        min_value=0,
-        initial=0,
-        help_text="",
-    )
-
     class Meta:
         model = Order
         fields = ["pet", "room", "check_in", "check_out", "note"]
         widgets = {"check_in": DATE_INPUT, "check_out": DATE_INPUT, "note": forms.TextInput}
         labels = {"note": "给护理师的留言（选填）"}
 
-    def __init__(self, *args, owner: Owner, store=None, **kwargs):
+    def __init__(self, *args, owner: Owner, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
-        self.store = store
-        self.coupon = None
-        self.coupon_discount = Decimal("0.00")
-        self.points_discount = Decimal("0.00")
         self.instance.source = Order.Source.ONLINE
         pets = owner.pets.all()
         self.fields["pet"].queryset = pets
@@ -214,49 +197,13 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
         self.fields["pet"].empty_label = "请选择宠物"
         if not self.is_bound and "pet" not in self.initial and len(pets) == 1:
             self.initial["pet"] = pets[0].pk
-        self.fields["room"].queryset = bookable_rooms(store)
+        self.fields["room"].queryset = bookable_rooms()
         self.fields["room"].label_from_instance = room_label
         self.fields["room"].empty_label = "请选择房间"
-        rate = max(1, settings.LOYALTY_POINTS_PER_YUAN_REDEEM)
-        self.fields["redeem_points"].help_text = f"当前可用 {owner.points} 积分，每 {rate} 积分抵 ¥1"
-
-    def clean(self):
-        cleaned = super().clean()
-        room, check_in, check_out = cleaned.get("room"), cleaned.get("check_in"), cleaned.get("check_out")
-        if not (room and check_in and check_out):
-            return cleaned
-        base = quote(room, check_in, check_out).total
-        code = (cleaned.get("coupon_code") or "").strip()
-        if code:
-            try:
-                self.coupon, self.coupon_discount = lookup_coupon(code, self.owner, base, store=room.store or self.store)
-            except ValidationError as exc:
-                self.add_error("coupon_code", exc)
-        points = int(cleaned.get("redeem_points") or 0)
-        rate = max(1, settings.LOYALTY_POINTS_PER_YUAN_REDEEM)
-        if points:
-            if points % rate:
-                self.add_error("redeem_points", f"积分须为 {rate} 的整数倍")
-            elif points > self.owner.points:
-                self.add_error("redeem_points", f"积分不足，当前可用 {self.owner.points}")
-            else:
-                self.points_discount = Decimal(points // rate).quantize(Decimal("0.01"))
-                if self.coupon_discount + self.points_discount > base:
-                    self.add_error("redeem_points", "优惠合计不能超过订单金额")
-        return cleaned
-
-    def apply_loyalty(self, order: Order):
-        """在订单首次保存前写入额外优惠与积分抵扣数。"""
-        extra = self.coupon_discount + self.points_discount
-        order._extra_discount = extra
-        order.points_redeemed = int(self.cleaned_data.get("redeem_points") or 0)
 
 
-def bookable_rooms(store=None):
-    qs = Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
-    if store is not None:
-        qs = qs.filter(models.Q(store=store) | models.Q(store__isnull=True))
-    return qs
+def bookable_rooms():
+    return Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
 
 
 def room_label(room: Room) -> str:
@@ -315,16 +262,3 @@ class ReviewForm(BootstrapMixin, forms.ModelForm):
             "feedback": "给我们的建议（仅门店可见）",
             "is_public": "允许在官网展示我的评价",
         }
-
-
-class WaitlistForm(BootstrapMixin, DateRangeMixin, forms.ModelForm):
-    class Meta:
-        model = Waitlist
-        fields = ["pet", "room_type", "check_in", "check_out"]
-        widgets = {"check_in": DATE_INPUT, "check_out": DATE_INPUT}
-
-    def __init__(self, *args, owner: Owner, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["pet"].queryset = owner.pets.all()
-        self.fields["pet"].label_from_instance = pet_label
-        self.fields["room_type"].choices = [("", "不限房型"), *Room.RoomType.choices]

@@ -46,11 +46,9 @@ class OrderHistoryInline(admin.TabularInline):
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone", "email", "points", "home_store", "pet_count", "has_account", "created_at")
+    list_display = ("name", "phone", "email", "pet_count", "has_account", "created_at")
     search_fields = ("name", "phone")
-    list_filter = ("home_store",)
-    autocomplete_fields = ("home_store",)
-    readonly_fields = ("user", "points", "created_at")
+    readonly_fields = ("user", "created_at")
     inlines = [PetInline]
     actions = ("create_account",)
 

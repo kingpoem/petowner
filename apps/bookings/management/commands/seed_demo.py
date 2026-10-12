@@ -12,10 +12,9 @@ from django.utils import timezone
 
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review, ServiceRecord
-from apps.loyalty.models import Coupon
 from apps.notifications.models import Notification
 from apps.pets.models import Owner, Pet, PetSize, Species
-from apps.rooms.models import PriceRule, Room
+from apps.rooms.models import Room
 from apps.stores.models import Store
 
 STOCK = Path(settings.BASE_DIR) / "static" / "img" / "stock"
@@ -159,16 +158,6 @@ class Command(BaseCommand):
         self._groups()
 
         flagship = Store.objects.filter(code="flagship").first() or Store.default()
-        Store.objects.get_or_create(
-            code="pudong",
-            defaults={
-                "name": "浦东店",
-                "phone": settings.SITE_PHONE,
-                "address": "上海市浦东新区宠爱大道 66 号",
-                "hours": settings.SITE_HOURS,
-                "sort": 1,
-            },
-        )
 
         if Room.objects.exists():
             Room.objects.filter(store__isnull=True).update(store=flagship)
@@ -185,20 +174,6 @@ class Command(BaseCommand):
             _attach(room, "photo", slot)
             rooms[room.number] = room
 
-        year = timezone.localdate().year
-        PriceRule.objects.create(
-            name="元旦假期", start_date=date(year + 1, 1, 1), end_date=date(year + 1, 1, 3), multiplier=Decimal("1.20")
-        )
-        PriceRule.objects.create(
-            name="春节假期", start_date=date(year + 1, 2, 5), end_date=date(year + 1, 2, 13), multiplier=Decimal("1.50")
-        )
-        PriceRule.objects.create(
-            name="劳动节假期",
-            start_date=date(year + 1, 5, 1),
-            end_date=date(year + 1, 5, 5),
-            multiplier=Decimal("1.30"),
-        )
-
         today = timezone.localdate()
         vaccine = today + timedelta(days=300)
 
@@ -212,36 +187,9 @@ class Command(BaseCommand):
             address="徐汇区幸福小区 1 栋",
             emergency_contact="张妈妈",
             emergency_phone="13900000001",
-            home_store=flagship,
-            points=500,
         )
-        li = customer("李娜", "13800000002", address="静安区阳光花园 3 栋", home_store=flagship)
-        wang = Owner.objects.create(name="王芳", phone="13800000003", address="长宁区", home_store=flagship)
-
-        Coupon.objects.create(
-            code="WELCOME20",
-            name="新客满减 20 元",
-            kind=Coupon.Kind.FIXED,
-            value=Decimal("20"),
-            min_amount=Decimal("100"),
-            store=None,
-            valid_from=today - timedelta(days=1),
-            valid_until=today + timedelta(days=365),
-            max_uses=0,
-            max_per_owner=1,
-        )
-        Coupon.objects.create(
-            code="STAY10",
-            name="复购九折",
-            kind=Coupon.Kind.PERCENT,
-            value=Decimal("10"),
-            min_amount=Decimal("200"),
-            store=flagship,
-            valid_from=today - timedelta(days=1),
-            valid_until=today + timedelta(days=180),
-            max_uses=200,
-            max_per_owner=3,
-        )
+        li = customer("李娜", "13800000002", address="静安区阳光花园 3 栋")
+        wang = Owner.objects.create(name="王芳", phone="13800000003", address="长宁区")
 
         def pet(owner, slot, **fields):
             p = Pet.objects.create(
@@ -313,7 +261,8 @@ class Command(BaseCommand):
                 order=o,
                 staff="赵护理",
                 care_content="早餐按量喂食，饮水正常，精神很好",
-                appetite=ServiceRecord.Appetite.FULL,
+                appetite="全部吃完",
+                health_status="良好",
                 feeding_time=_at(o.check_in + timedelta(days=1), 8, 30),
             )
             o.finish_boarding()
@@ -346,32 +295,16 @@ class Command(BaseCommand):
         boarding.pay(Payment.Method.ALIPAY)
         boarding.start_boarding()
         for day, hour, slot, content, appetite, health, note in [
-            (
-                0,
-                18,
-                "care-golden-eat",
-                "晚餐 200g 狗粮全部吃完，饮水正常",
-                ServiceRecord.Appetite.FULL,
-                ServiceRecord.Health.GOOD,
-                "",
-            ),
-            (1, 8, "", "早餐只吃了一半，精神尚可", ServiceRecord.Appetite.HALF, ServiceRecord.Health.GOOD, ""),
-            (
-                1,
-                17,
-                "care-golden-walk",
-                "傍晚在草坪遛弯 40 分钟，和小伙伴玩得很开心",
-                ServiceRecord.Appetite.NA,
-                ServiceRecord.Health.GOOD,
-                "",
-            ),
+            (0, 18, "care-golden-eat", "晚餐 200g 狗粮全部吃完，饮水正常", "全部吃完", "良好", ""),
+            (1, 8, "", "早餐只吃了一半，精神尚可", "吃了一半", "良好", ""),
+            (1, 17, "care-golden-walk", "傍晚在草坪遛弯 40 分钟，和小伙伴玩得很开心", "非喂食记录", "良好", ""),
             (
                 1,
                 20,
                 "care-golden-bath",
                 "洗澡、吹干、梳毛，检查耳朵和指甲",
-                ServiceRecord.Appetite.NA,
-                ServiceRecord.Health.NORMAL,
+                "非喂食记录",
+                "一般",
                 "轻微掉毛，换季正常现象，持续观察",
             ),
         ]:
@@ -402,7 +335,8 @@ class Command(BaseCommand):
             order=departing,
             staff="赵护理",
             care_content="猫粮与冻干按量喂食，猫砂已清理，窗台晒太阳一下午",
-            appetite=ServiceRecord.Appetite.FULL,
+            appetite="全部吃完",
+            health_status="良好",
             feeding_time=_at(today - timedelta(days=1), 18),
         )
         _backdate(departing)
@@ -460,8 +394,6 @@ class Command(BaseCommand):
                 "add_order",
                 "change_order",
                 "view_payment",
-                "view_waitlist",
-                "change_waitlist",
                 "view_servicerecord",
                 "view_review",
                 "change_review",

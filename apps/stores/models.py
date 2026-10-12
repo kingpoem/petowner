@@ -42,20 +42,3 @@ class Store(models.Model):
             hours=settings.SITE_HOURS,
             is_default=True,
         )
-
-
-class StaffStore(models.Model):
-    """员工可管理的门店；未配置时视为可管理全部门店。"""
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="员工", on_delete=models.CASCADE, related_name="store_memberships"
-    )
-    store = models.ForeignKey(Store, verbose_name="门店", on_delete=models.CASCADE, related_name="staff_members")
-
-    class Meta:
-        verbose_name = "员工门店权限"
-        verbose_name_plural = verbose_name
-        unique_together = ("user", "store")
-
-    def __str__(self):
-        return f"{self.user} @ {self.store}"

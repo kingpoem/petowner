@@ -4,22 +4,11 @@
 {% block content %}
 {% dashboard_stats as s %}
 <div id="ps-dashboard">
-  {% if ALL_STORES %}
-  <div class="ps-store-bar">
-    <span>当前门店</span>
-    {% for s in ALL_STORES %}
-      <a class="{% if CURRENT_STORE and s.pk == CURRENT_STORE.pk %}active{% endif %}" href="?store={{ s.code }}">{{ s.name }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
   <nav class="ps-shortcuts" aria-label="常用功能">
-    <a href="{% url 'staff:board' %}">手机工作台</a>
-    {% if perms.bookings.view_order and perms.bookings.view_payment %}<a href="{% url 'admin:bookings_order_reports' %}">经营报表</a>{% endif %}
     {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
     {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_available_rooms' %}">可用房间查询</a>{% endif %}
     {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_add' %}">门店录入订单</a>{% endif %}
   </nav>
-  <p class="ps-store-kpi-label">看板范围：{{ s.store_name }}</p>
   <div class="ps-dash">
     <div class="ps-kpi"><div class="l">今日待入住</div><div class="v">{{ s.arrivals|length }}</div></div>
     <div class="ps-kpi"><div class="l">今日待离店</div><div class="v">{{ s.departures|length }}</div></div>
@@ -27,7 +16,6 @@
     <div class="ps-kpi"><div class="l">入住率</div><div class="v">{{ s.occupancy }}%</div></div>
     <div class="ps-kpi"><div class="l">本月净收入（元）</div><div class="v">{{ s.month_revenue }}</div></div>
     <div class="ps-kpi"><div class="l">待收款订单</div><div class="v">{{ s.unpaid }}</div></div>
-    <div class="ps-kpi"><div class="l">候补中</div><div class="v">{{ s.waitlist }}</div></div>
     <div class="ps-kpi"><div class="l">平均评分 / 待回复</div><div class="v">{{ s.avg_rating|floatformat:1|default:"-" }} / {{ s.pending_reviews }}</div></div>
   </div>
   <div class="ps-panels">

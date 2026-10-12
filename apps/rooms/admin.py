@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 
 from apps.pets.admin import thumbnail
 
-from .models import PriceRule, Room
+from .models import Room
 
 
 @admin.register(Room)
@@ -37,13 +37,6 @@ class RoomAdmin(admin.ModelAdmin):
         ("官网展示", {"fields": ("photo", "photo_preview", "amenities", "description")}),
     )
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        store = getattr(request, "store", None)
-        if store is not None:
-            qs = qs.filter(store=store)
-        return qs
-
     @admin.display(description="照片")
     def photo_thumb(self, obj):
         return thumbnail(obj.photo)
@@ -68,10 +61,3 @@ class RoomAdmin(admin.ModelAdmin):
             room.save(update_fields=["status"])
             room.refresh_status()
         self.message_user(request, "已解除停用", messages.SUCCESS)
-
-
-@admin.register(PriceRule)
-class PriceRuleAdmin(admin.ModelAdmin):
-    list_display = ("name", "start_date", "end_date", "multiplier", "is_active")
-    list_editable = ("multiplier", "is_active")
-    list_filter = ("is_active",)

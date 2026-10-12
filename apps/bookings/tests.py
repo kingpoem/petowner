@@ -17,14 +17,11 @@ from apps.testing import days, make_order, make_owner, make_pet, make_room
 from .models import (
     Order,
     Payment,
-    Waitlist,
     expire_unpaid_orders,
     find_available_rooms,
     is_room_available,
-    process_waitlist,
     room_problem_for_pet,
 )
-from .reports import build_report, chart
 
 
 class RoomMatchingTests(TestCase):
@@ -308,90 +305,16 @@ class MoneyRuleTests(TestCase):
         self.assertEqual(order.balance_due, Decimal("400.00"))
 
 
-class ReportTests(TestCase):
-    def setUp(self):
-        self.room = make_room(room_type=Room.RoomType.DELUXE, capacity=2)
-        self.paid = make_order(room=self.room, start=0, nights=2, source=Order.Source.ONLINE)
-        self.paid.pay(Payment.Method.WECHAT)
-        self.cancelled = make_order(room=self.room, start=1, nights=1)
-        self.cancelled.pay(Payment.Method.CASH)
-        self.cancelled.cancel()
-
-    def test_daily_numbers(self):
-        report = build_report(days(0), days(2))
-        k = report.kpis
-        self.assertEqual(
-            (k["income"], k["refund"], k["net"]), (Decimal("300.00"), Decimal("100.00"), Decimal("200.00"))
-        )
-        self.assertEqual(k["nights"], 2)
-        self.assertAlmostEqual(k["occupancy"], 2 * 100 / (2 * 3))
-        self.assertEqual(k["adr"], Decimal("100.00"))
-        self.assertEqual((k["orders"], round(k["cancel_rate"])), (2, 50))
-        self.assertEqual([d.nights for d in report.days], [1, 1, 0])
-        deluxe = next(s for s in report.room_types if s.label == "豪华间")
-        self.assertEqual((deluxe.orders, deluxe.nights, deluxe.revenue), (2, 2, Decimal("200.00")))
-        online = next(s for s in report.channels if s.label == "线上预约")
-        self.assertEqual((online.orders, online.revenue, round(online.share)), (1, Decimal("200.00"), 100))
-        self.assertEqual([s.label for s in report.methods], ["微信支付"])
-
-    def test_chart_and_monthly_buckets(self):
-        report = build_report(days(-100), days(0))
-        self.assertTrue(report.monthly)
-        self.assertLessEqual(len(report.buckets()), 5)
-        data = chart(report)
-        self.assertEqual(len(data["bars"]), len(report.buckets()))
-        self.assertEqual(len(data["line"].split()), len(data["bars"]))
-
-    def test_admin_page_and_exports(self):
-        admin = get_user_model().objects.create_superuser("boss", "", "pw")
-        self.client.force_login(admin)
-        url = reverse("admin:bookings_order_reports")
-        response = self.client.get(url, {"preset": "7"})
-        self.assertContains(response, "经营报表")
-        self.assertContains(response, "<svg")
-        csv_response = self.client.get(url, {"preset": "7", "export": "daily"})
-        self.assertEqual(csv_response["Content-Type"], "text/csv; charset=utf-8")
-        body = csv_response.content.decode("utf-8")
-        self.assertTrue(body.startswith("\ufeff日期"))
-        self.assertIn("合计,300.00,100.00,200.00", body)
-        orders_csv = self.client.get(url, {"preset": "custom", "start": days(-1), "end": days(1), "export": "orders"})
-        self.assertIn(self.paid.order_no, orders_csv.content.decode("utf-8"))
-        xlsx = self.client.get(url, {"preset": "7", "export": "xlsx"})
-        self.assertIn("spreadsheetml", xlsx["Content-Type"])
-        self.assertGreater(len(xlsx.content), 1000)
-
+class CalendarTests(TestCase):
     def test_calendar_page(self):
+        room = make_room()
+        paid = make_order(room=room, start=0, nights=2, source=Order.Source.ONLINE)
+        paid.pay(Payment.Method.WECHAT)
         admin = get_user_model().objects.create_superuser("cal", "", "pw")
         self.client.force_login(admin)
         response = self.client.get(reverse("admin:bookings_order_calendar"), {"nights": "14"})
         self.assertContains(response, "房态日历")
-        self.assertContains(response, self.paid.room.number)
-
-    def test_requires_permission(self):
-        clerk = get_user_model().objects.create_user("clerk", password="pw", is_staff=True)
-        self.client.force_login(clerk)
-        self.assertEqual(self.client.get(reverse("admin:bookings_order_reports")).status_code, 403)
-
-
-class WaitlistTests(TestCase):
-    def test_cancellation_notifies_waitlist(self):
-        room = make_room()
-        blocking = make_order(room=room, start=3, nights=2)
-        waiting_owner = make_owner()
-        entry = Waitlist.objects.create(pet=make_pet(owner=waiting_owner), check_in=days(3), check_out=days(5))
-        self.assertEqual(process_waitlist(), 0)
-
-        with self.captureOnCommitCallbacks(execute=True):
-            blocking.cancel()
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, Waitlist.Status.NOTIFIED)
-        note = Notification.objects.get(user=waiting_owner.user, title="候补有房啦")
-        self.assertIn(f"room={room.pk}", note.link)
-
-    def test_past_entries_ignored(self):
-        make_room()
-        Waitlist.objects.create(pet=make_pet(), check_in=days(-2), check_out=days(1))
-        self.assertEqual(process_waitlist(), 0)
+        self.assertContains(response, paid.room.number)
 
 
 @override_settings(PAYMENT_TIMEOUT_MINUTES=30)

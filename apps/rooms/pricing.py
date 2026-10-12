@@ -4,7 +4,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 
-from .models import PriceRule, Room
+from .models import Room
 
 CENT = Decimal("0.01")
 
@@ -34,15 +34,11 @@ class Quote:
 
 
 def quote(room: Room, check_in: date, check_out: date) -> Quote:
-    """逐晚计价：节假日规则取倍率最高的一条；满足天数再整体打折。"""
-    rules = list(PriceRule.objects.filter(is_active=True, start_date__lt=check_out, end_date__gte=check_in))
+    """逐晚计价：按房间日价计费，满足连住天数再整体打折。"""
     result = Quote()
     day = check_in
     while day < check_out:
-        matched = [r for r in rules if r.start_date <= day <= r.end_date]
-        best = max(matched, key=lambda r: r.multiplier, default=None)
-        price = room.price * (best.multiplier if best else 1)
-        result.nights.append(NightPrice(day, price.quantize(CENT, ROUND_HALF_UP), best.name if best else ""))
+        result.nights.append(NightPrice(day, room.price.quantize(CENT, ROUND_HALF_UP)))
         day += timedelta(days=1)
 
     result.subtotal = sum((n.price for n in result.nights), Decimal("0.00"))

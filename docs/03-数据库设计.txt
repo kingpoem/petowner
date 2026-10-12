@@ -1,207 +1,36 @@
-PawStay 宠物寄养 —— 数据库设计
+PawStay 宠物寄养 —— 数据库设计（课程精简版）
 ====================================
 
-数据库：MySQL 8+，库名 petowner，字符集 utf8mb4 / utf8mb4_unicode_ci
-表结构由 Django 迁移文件生成（apps/*/migrations），主键均为 BIGINT 自增 id。
-时间字段以 UTC 存储（USE_TZ=True），页面按 Asia/Shanghai 显示。
+数据库：MySQL 8+，库名 petowner，utf8mb4。表由 Django 迁移生成。
 
 
 一、实体关系
 ------------
-  auth_user        1 ---- 0..1 宠物主人        （线上账号，门店建档的主人可以没有账号）
-  宠物主人         1 ---- N    宠物
-  宠物             1 ---- N    寄养订单
-  寄养房间         1 ---- N    寄养订单
-  寄养订单         1 ---- N    收退款流水
-  寄养订单         1 ---- N    护理记录
-  寄养订单         1 ---- 0..1 服务评价
-  宠物             1 ---- N    候补登记
-  auth_user        1 ---- N    站内通知
-  auth_user        1 ---- 0..1 二次验证设备    （员工绑定的身份验证器）
-  价格规则         独立表，按日期区间参与报价
-
-  删除约束：
-    主人、宠物、房间被订单引用时禁止删除（PROTECT）；
-    订单被收退款流水引用时禁止删除（PROTECT，保证账目完整）；
-    删除订单时级联删除其护理记录与评价（CASCADE）；
-    删除宠物时级联删除其候补登记；删除账号时主人档案保留（SET NULL）。
+  auth_user     1 ---- 0..1  宠物主人
+  宠物主人      1 ---- N     宠物
+  门店          1 ---- N     房间 / 订单
+  宠物          1 ---- N     寄养订单
+  房间          1 ---- N     寄养订单
+  订单          1 ---- N     收退款流水
+  订单          1 ---- N     护理记录
+  订单          1 ---- 0..1  服务评价
+  auth_user     1 ---- N     站内通知
 
 
-二、表结构
-----------
-1. pets_owner 宠物主人
-   id                 BIGINT        主键
-   user_id            INT           外键 -> auth_user.id，唯一，可空（线上账号）
-   name               VARCHAR(50)   主人姓名
-   phone              VARCHAR(20)   联系方式，唯一（同时作为线上登录名）
-   email              VARCHAR(254)  邮箱（找回密码用）
-   address            VARCHAR(200)  地址
-   emergency_contact  VARCHAR(50)   紧急联系人
-   emergency_phone    VARCHAR(20)   紧急联系电话
-   created_at         DATETIME      登记时间
-
-2. pets_pet 宠物档案
-   id              BIGINT        主键
-   code            VARCHAR(20)   宠物编号，唯一，自动生成 P00001
-   name            VARCHAR(50)   宠物名称
-   photo           VARCHAR(100)  照片路径（media/pets/年/月/随机名.jpg，上传时压缩并去除 EXIF）
-   species         VARCHAR(10)   宠物类型 dog/cat/other
-   breed           VARCHAR(50)   品种
-   age             SMALLINT      年龄（岁）
-   gender          VARCHAR(10)   性别 male/female/unknown
-   weight          DECIMAL(5,1)  体重 kg，决定体型：<10 小型，10-25 中型，>25 大型
-   sterilized      BOOL          已绝育
-   temperament     VARCHAR(20)   性格 gentle/active/timid/aggressive
-   health_status   VARCHAR(200)  健康情况（护理异常时自动更新）
-   diet_notes      VARCHAR(200)  饮食习惯
-   allergies       VARCHAR(200)  过敏 / 禁忌
-   vaccine_expiry  DATE          疫苗有效期至
-   deworm_expiry   DATE          驱虫有效期至
-   owner_id        BIGINT        外键 -> pets_owner.id
-   created_at      DATETIME      建档时间
-
-3. rooms_room 寄养房间
-   id            BIGINT        主键
-   number        VARCHAR(20)   房间编号，唯一
-   name          VARCHAR(50)   官网展示名称
-   room_type     VARCHAR(20)   房间类型 standard/deluxe/suite
-   pet_type      VARCHAR(10)   适用宠物类型 dog/cat/any
-   max_pet_size  SMALLINT      最大接待体型 1 小型 / 2 中型 / 3 大型
-   price         DECIMAL(8,2)  寄养价格（元/晚），>= 0.01
-   capacity      SMALLINT      房间容量，>= 1
-   area          DECIMAL(5,1)  面积（㎡）
-   amenities     VARCHAR(200)  设施，逗号分隔
-   photo         VARCHAR(100)  房间照片路径
-   description   LONGTEXT      房间介绍
-   status        VARCHAR(20)   房间状态 available/full/maintenance
-   is_listed     BOOL          是否在官网展示
-
-4. rooms_pricerule 价格规则
-   id          BIGINT        主键
-   name        VARCHAR(50)   规则名称（如“国庆假期”）
-   start_date  DATE          开始日期
-   end_date    DATE          结束日期（含当天），不早于开始日期
-   multiplier  DECIMAL(4,2)  价格倍率，>= 0.10
-   is_active   BOOL          启用
-
-5. bookings_order 寄养订单
-   id              BIGINT         主键
-   order_no        VARCHAR(30)    订单编号，唯一，O + 下单日期 + 5 位序号
-   pet_id          BIGINT         外键 -> pets_pet.id
-   room_id         BIGINT         外键 -> rooms_room.id
-   check_in        DATE           入住日期
-   check_out       DATE           离店日期
-   discount        DECIMAL(10,2)  优惠金额
-   amount          DECIMAL(10,2)  订单金额（逐晚价格之和 - 优惠）
-   payment_status  VARCHAR(20)    支付状态 unpaid/partial（待补差价）/paid/refunded，
-                                  由收退款流水自动维护
-   status          VARCHAR(20)    订单状态 pending/checked_in/completed/cancelled
-   source          VARCHAR(20)    下单渠道 online/front_desk
-   note            VARCHAR(200)   留言 / 备注
-   cancel_reason   VARCHAR(200)   取消原因
-   cancel_fee      DECIMAL(10,2)  取消违约金（取消后 amount 即为违约金，已付超出部分退回）
-   paid_at         DATETIME       支付时间
-   checked_in_at   DATETIME       实际入住时间
-   checked_out_at  DATETIME       实际离店时间
-   created_at      DATETIME       下单时间
-   updated_at      DATETIME       更新时间
-   索引：(room_id, status, check_in, check_out) —— 支撑可用房间查询
-
-6. bookings_payment 收退款流水
-   id              BIGINT         主键
-   order_id        BIGINT         外键 -> bookings_order.id
-   kind            VARCHAR(10)    类型 pay/refund
-   method          VARCHAR(10)    方式 wechat/alipay/cash/card
-   amount          DECIMAL(10,2)  金额
-   transaction_no  VARCHAR(40)    流水号，唯一（T/R + 时间 + 随机串）
-   created_at      DATETIME       时间
-
-7. bookings_waitlist 候补登记
-   id           BIGINT       主键
-   pet_id       BIGINT       外键 -> pets_pet.id
-   room_type    VARCHAR(20)  期望房型，可空（不限）
-   check_in     DATE         入住日期
-   check_out    DATE         离店日期
-   status       VARCHAR(20)  waiting/notified/booked/cancelled
-   notified_at  DATETIME     通知时间
-   created_at   DATETIME     登记时间（先到先得排序依据）
-
-8. care_servicerecord 护理记录
-   id            BIGINT        主键（显示为 S00001）
-   order_id      BIGINT        外键 -> bookings_order.id
-   staff         VARCHAR(50)   护理师
-   feeding_time  DATETIME      服务时间
-   care_content  LONGTEXT      护理内容
-   appetite      VARCHAR(10)   进食 full/half/little/none/na
-   health_status VARCHAR(20)   健康状态 good/normal/abnormal
-   health_note   VARCHAR(200)  健康情况说明
-   photo         VARCHAR(100)  现场照片路径
-   created_at    DATETIME      记录时间
-
-9. care_review 服务评价
-   id          BIGINT    主键
-   order_id    BIGINT    外键 -> bookings_order.id，唯一（一单一评）
-   rating      SMALLINT  评分 1-5
-   content     LONGTEXT  评价内容
-   feedback    LONGTEXT  意见反馈（仅门店可见）
-   reply       LONGTEXT  机构回复
-   is_public   BOOL      是否在官网展示
-   created_at  DATETIME  评价时间
-
-10. notifications_notification 站内通知
-   id          BIGINT        主键
-   user_id     INT           外键 -> auth_user.id
-   title       VARCHAR(100)  标题
-   body        LONGTEXT      内容
-   link        VARCHAR(200)  站内跳转链接
-   level       VARCHAR(10)   info/success/warning/danger
-   is_read     BOOL          已读
-   created_at  DATETIME      时间
-   索引：(user_id, is_read) —— 支撑未读数角标
-
-11. security_totpdevice 二次验证设备
-   id            BIGINT       主键
-   user_id       INT          外键 -> auth_user.id，唯一
-   secret        VARCHAR(64)  TOTP 密钥（Base32）
-   confirmed_at  DATETIME     绑定确认时间，空表示尚未完成绑定
-   last_step     BIGINT       最近一次通过验证的时间片序号，防止动态码重放
-   last_used_at  DATETIME     最近验证时间
-
-12. django_cache 数据库缓存表（make migrate 时由 createcachetable 创建）
-   用于登录失败计数与锁定、图形验证码答案、短信验证码（哈希）及发送频率计数，
-   多进程 / 多容器共享。
-
-另有 Django 内置表：auth_user（顾客与员工账号，顾客用户名即手机号）、auth_group
-（前台、护理师）、auth_permission、django_session、django_admin_log（后台操作日志）等。
+二、主要业务表
+--------------
+1. pets_owner：姓名、联系方式(phone)、邮箱、地址、紧急联系人
+2. pets_pet：编号 code、名称、品种、年龄、性别、健康情况、主人 FK 等
+3. rooms_room：编号、类型、适用宠物、价格、容量、状态、门店 FK
+4. stores_store：单店（默认旗舰店）
+5. bookings_order：订单编号、宠物、房间、入离店、金额、支付状态、订单状态
+6. bookings_payment：收退款流水
+7. care_servicerecord：记录编号 code、订单、服务人员、喂养时间、护理内容、健康状态
+8. care_review：评分、评价内容、意见反馈、机构回复
+9. notifications_notification：站内通知
 
 
-三、关键查询
-------------
-1. 房间可用性
-   与目标区间 [入住, 离店) 重叠的有效订单：
-     SELECT * FROM bookings_order
-     WHERE room_id = ? AND status IN ('pending', 'checked_in')
-       AND check_in < :离店 AND check_out > :入住;
-   重叠订单数小于容量直接可用；否则逐日统计，任一天 >= capacity 则不可用。
-   区间左闭右开，离店当天可被下一单入住。
-   线上下单与改期时先 SELECT ... FROM rooms_room WHERE id = ? FOR UPDATE，再执行上述校验
-   并写入，同一房间的并发预约在事务内串行。
-   查询多个房间（房间列表、可用房间查询）时用 room_id IN (...) 一次取出全部重叠订单，
-   在内存中按房间逐日计算，查询次数固定为 2 次，与房间数量无关。
-
-2. 超时未支付订单
-     SELECT * FROM bookings_order
-     WHERE source = 'online' AND status = 'pending' AND payment_status = 'unpaid'
-       AND created_at < NOW() - INTERVAL :PAYMENT_TIMEOUT_MINUTES MINUTE;
-
-3. 本月净收入（运营看板）
-   SUM(收款金额) - SUM(退款金额)，按 bookings_payment.created_at 落在本月统计。
-
-4. 订单已付金额
-   SUM(CASE kind WHEN 'pay' THEN amount ELSE -amount END) WHERE order_id = ?；
-   与订单金额比较得出 unpaid / partial / paid / refunded。
-
-5. 经营报表
-   收入：按 bookings_payment.created_at 分日汇总收款与退款；
-   间夜：取与统计区间重叠的有效订单（pending/checked_in/completed），按日展开计数；
-   入住率 = 已售间夜 ÷（Σ 未停用房间容量 × 天数）；平均每间夜收入 = 净收入 ÷ 已售间夜。
+三、说明
+--------
+  房间日价 × 晚数，满足 LONG_STAY_DAYS 时按 LONG_STAY_RATE 连住折扣。
+  护理「健康状态 / 进食情况」为自由文本；异常关键词触发站内提醒。

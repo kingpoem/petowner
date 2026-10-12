@@ -3,7 +3,7 @@ from django.http import HttpResponse
 
 
 class HealthCheckMiddleware:
-    """/healthz 探活：置于中间件首位，绕过 ALLOWED_HOSTS 与 HTTPS 跳转，供容器编排和负载均衡使用。"""
+    """/healthz 探活：置于中间件首位，绕过 ALLOWED_HOSTS 与 HTTPS 跳转，供负载均衡使用。"""
 
     def __init__(self, get_response):
         self.get_response = get_response

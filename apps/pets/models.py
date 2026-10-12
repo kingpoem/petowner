@@ -41,15 +41,6 @@ class Owner(models.Model):
     address = models.CharField("地址", max_length=200, blank=True)
     emergency_contact = models.CharField("紧急联系人", max_length=50, blank=True)
     emergency_phone = models.CharField("紧急联系电话", max_length=20, blank=True)
-    points = models.PositiveIntegerField("可用积分", default=0)
-    home_store = models.ForeignKey(
-        "stores.Store",
-        verbose_name="常去门店",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="owners",
-    )
     created_at = models.DateTimeField("登记时间", auto_now_add=True)
 
     class Meta:

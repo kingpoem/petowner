@@ -8,7 +8,7 @@ from .models import Review, ServiceRecord
 @admin.register(ServiceRecord)
 class ServiceRecordAdmin(admin.ModelAdmin):
     list_display = (
-        "__str__",
+        "code",
         "photo_thumb",
         "order",
         "pet_code",
@@ -18,10 +18,20 @@ class ServiceRecordAdmin(admin.ModelAdmin):
         "appetite",
         "health_status",
     )
-    list_filter = ("health_status", "appetite", "feeding_time")
-    search_fields = ("order__order_no", "order__pet__code", "order__pet__name", "staff")
+    list_filter = ("feeding_time",)
+    search_fields = (
+        "code",
+        "order__order_no",
+        "order__pet__code",
+        "order__pet__name",
+        "staff",
+        "health_status",
+        "appetite",
+        "care_content",
+    )
     autocomplete_fields = ("order",)
     list_select_related = ("order__pet",)
+    readonly_fields = ("code",)
 
     @admin.display(description="照片")
     def photo_thumb(self, obj):

@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "apps.stores",
-    "apps.loyalty",
     "apps.pets",
     "apps.rooms",
     "apps.bookings",
@@ -58,9 +57,6 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.security",
     "apps.payments",
-    "apps.billing",
-    "apps.api",
-    "apps.staff",
     "apps.web",
 ]
 
@@ -74,8 +70,6 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "apps.security.middleware.TwoFactorMiddleware",
-    "apps.stores.middleware.CurrentStoreMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -109,7 +103,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.web.context_processors.site",
-                "apps.stores.context_processors.stores",
             ],
         },
     },
@@ -216,8 +209,6 @@ SMS_ACCESS_KEY_ID = env("SMS_ACCESS_KEY_ID")
 SMS_ACCESS_KEY_SECRET = env("SMS_ACCESS_KEY_SECRET")
 SMS_SIGN_NAME = env("SMS_SIGN_NAME")
 SMS_TEMPLATE_CODE = env("SMS_TEMPLATE_CODE")
-ADMIN_REQUIRE_2FA = env_bool("ADMIN_REQUIRE_2FA", not DEBUG)
-STAFF_2FA_PATHS = ["/staff/"]
 
 
 LOGGING = {
@@ -291,14 +282,12 @@ WECHAT_MCH_ID = env("WECHAT_MCH_ID")
 WECHAT_API_KEY = env("WECHAT_API_KEY")
 WECHAT_CERT_PATH = env("WECHAT_CERT_PATH")
 WECHAT_KEY_PATH = env("WECHAT_KEY_PATH")  # 默认与证书同目录的 apiclient_key.pem
-LOYALTY_POINTS_PER_YUAN = int(env("LOYALTY_POINTS_PER_YUAN", "1"))
-LOYALTY_POINTS_PER_YUAN_REDEEM = int(env("LOYALTY_POINTS_PER_YUAN_REDEEM", "100"))  # 100 积分抵 1 元
 
 # 支付宝电脑网站支付（PAYMENT_SANDBOX=false 时必填）
 ALIPAY_APP_ID = env("ALIPAY_APP_ID")
 ALIPAY_PRIVATE_KEY = env("ALIPAY_PRIVATE_KEY")
 ALIPAY_PUBLIC_KEY = env("ALIPAY_PUBLIC_KEY")
 
-# 业务短信触达：逗号分隔事件 care / health / waitlist；需另配 SMS_NOTIFY_TEMPLATE_CODE
+# 业务短信触达：逗号分隔事件 care / health；需另配 SMS_NOTIFY_TEMPLATE_CODE
 SMS_NOTIFY_EVENTS = env_list("SMS_NOTIFY_EVENTS")
 SMS_NOTIFY_TEMPLATE_CODE = env("SMS_NOTIFY_TEMPLATE_CODE")

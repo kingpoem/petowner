@@ -6,4 +6,4 @@ class SecurityConfig(AppConfig):
     verbose_name = "账号安全"
 
     def ready(self):
-        from . import checks, signals  # noqa: F401
+        from . import checks  # noqa: F401

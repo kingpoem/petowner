@@ -9,33 +9,7 @@ from django.urls import reverse
 
 from apps.testing import PASSWORD, make_owner
 
-from . import captcha, sms, totp
-from .models import TOTPDevice
-from .views import VERIFIED_SESSION_KEY
-
-RFC_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"  # base32("12345678901234567890")
-
-
-def current_code(device: TOTPDevice, offset: int = 0) -> str:
-    return totp.code_at(device.secret, totp.current_step() + offset)
-
-
-class TOTPTests(TestCase):
-    def test_rfc6238_vectors(self):
-        self.assertEqual(totp.code_at(RFC_SECRET, 59 // 30), "287082")
-        self.assertEqual(totp.code_at(RFC_SECRET, 1111111109 // 30), "081804")
-        self.assertEqual(totp.match_step(RFC_SECRET, "287 082", now=59), 1)
-        self.assertEqual(totp.match_step(RFC_SECRET, "287082", now=59 + 30), 1)
-        self.assertIsNone(totp.match_step(RFC_SECRET, "287082", now=59 + 90))
-        self.assertIsNone(totp.match_step(RFC_SECRET, "12345"))
-
-    def test_device_rejects_replay(self):
-        device = TOTPDevice.objects.create(user=get_user_model().objects.create_user("clerk"))
-        code = current_code(device)
-        self.assertTrue(device.verify(code))
-        self.assertTrue(device.confirmed)
-        self.assertFalse(device.verify(code))
-        self.assertIn("otpauth://totp/", device.provisioning_uri())
+from . import captcha, sms
 
 
 class CaptchaTests(TestCase):
@@ -147,75 +121,10 @@ class SendSmsViewTests(TestCase):
         self.assertIsNone(cache.get("sms:code:reset:13899998888"))
 
 
-class AdminTwoFactorTests(TestCase):
+class AdminLoginTests(TestCase):
     def setUp(self):
         cache.clear()
         self.admin = get_user_model().objects.create_superuser("boss", "", PASSWORD)
-
-    def _login(self):
-        self.client.post(reverse("admin:login"), {"username": "boss", "password": PASSWORD})
-
-    def _bind(self) -> TOTPDevice:
-        device = TOTPDevice.objects.create(user=self.admin)
-        device.verify(current_code(device, -1))
-        return device
-
-    def test_setup_flow(self):
-        self._login()
-        response = self.client.get(reverse("security:2fa_setup"))
-        self.assertContains(response, "<svg")
-        device = TOTPDevice.objects.get(user=self.admin)
-        self.assertContains(self.client.post(reverse("security:2fa_setup"), {"code": "000000"}), "动态码不正确")
-        response = self.client.post(reverse("security:2fa_setup"), {"code": current_code(device)})
-        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
-        device.refresh_from_db()
-        self.assertTrue(device.confirmed)
-        self.assertEqual(self.client.get(reverse("admin:index")).status_code, 200)
-
-    def test_bound_admin_must_verify_after_login(self):
-        device = self._bind()
-        self._login()
-        response = self.client.get(reverse("admin:bookings_order_changelist"))
-        self.assertTrue(response["Location"].startswith(reverse("security:2fa_verify")))
-        verify_url = response["Location"]
-        self.assertContains(self.client.get(verify_url), "动态码")
-        response = self.client.post(verify_url, {"code": current_code(device)})
-        self.assertRedirects(response, reverse("admin:bookings_order_changelist"), fetch_redirect_response=False)
-        self.assertEqual(self.client.session[VERIFIED_SESSION_KEY], self.admin.pk)
-        # 重新登录后需要再次验证
-        self._login()
-        self.assertNotIn(VERIFIED_SESSION_KEY, self.client.session)
-
-    def test_verify_lockout_logs_out(self):
-        self._bind()
-        self._login()
-        for _ in range(5):
-            response = self.client.post(reverse("security:2fa_verify"), {"code": "000000"})
-        self.assertRedirects(response, reverse("admin:login"), fetch_redirect_response=False)
-        self.assertNotIn("_auth_user_id", self.client.session)
-
-    def test_verify_rejects_external_next(self):
-        device = self._bind()
-        self._login()
-        url = reverse("security:2fa_verify") + "?next=https://evil.example.com/"
-        response = self.client.post(url, {"code": current_code(device)})
-        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
-
-    @override_settings(ADMIN_REQUIRE_2FA=True)
-    def test_required_policy_forces_binding(self):
-        self._login()
-        response = self.client.get(reverse("admin:index"))
-        self.assertRedirects(response, reverse("security:2fa_setup"), fetch_redirect_response=False)
-        self.assertContains(self.client.get(response["Location"]), "要求员工启用二次验证")
-
-    def test_disable_requires_code(self):
-        device = self._bind()
-        self._login()
-        self.client.post(reverse("security:2fa_verify"), {"code": current_code(device)})
-        self.client.post(reverse("security:2fa_disable"), {"code": "000000"})
-        self.assertTrue(TOTPDevice.objects.exists())
-        self.client.post(reverse("security:2fa_disable"), {"code": current_code(device, 1)})
-        self.assertFalse(TOTPDevice.objects.exists())
 
     def test_admin_login_requires_captcha_after_failures(self):
         for _ in range(3):

@@ -19,8 +19,15 @@ class ServiceRecordTests(TestCase):
             ServiceRecord(order=pending, staff="小王", care_content="喂食").full_clean()
         ServiceRecord(order=self.order, staff="小王", care_content="喂食").full_clean()
 
+    def test_assigns_record_code(self):
+        record = ServiceRecord.objects.create(order=self.order, staff="小王", care_content="早餐吃完")
+        self.assertTrue(record.code.startswith("S"))
+        self.assertEqual(record.code, f"S{record.pk:05d}")
+
     def test_normal_record_sends_info_notification(self):
-        ServiceRecord.objects.create(order=self.order, staff="小王", care_content="早餐吃完")
+        ServiceRecord.objects.create(
+            order=self.order, staff="小王", care_content="早餐吃完", health_status="良好", appetite="全部吃完"
+        )
         note = Notification.objects.filter(user=self.owner.user).latest("created_at")
         self.assertEqual(note.level, Notification.Level.INFO)
         self.assertEqual(note.body, "早餐吃完")
@@ -31,7 +38,7 @@ class ServiceRecordTests(TestCase):
             order=self.order,
             staff="小王",
             care_content="精神不振",
-            health_status=ServiceRecord.Health.ABNORMAL,
+            health_status="异常",
             health_note="轻微腹泻",
         )
         self.assertTrue(record.needs_attention)
@@ -42,7 +49,7 @@ class ServiceRecordTests(TestCase):
 
     def test_poor_appetite_needs_attention(self):
         record = ServiceRecord(
-            order=self.order, staff="小王", care_content="晚餐", appetite=ServiceRecord.Appetite.NONE
+            order=self.order, staff="小王", care_content="晚餐", appetite="未进食", health_status="良好"
         )
         self.assertTrue(record.needs_attention)
 

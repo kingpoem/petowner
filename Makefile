@@ -1,13 +1,12 @@
 HOST ?= 127.0.0.1
 PORT ?= 8000
 MANAGE = uv run python manage.py
-COMPOSE = docker compose
 
 export PYTHONUTF8 := 1
 
 .DEFAULT_GOAL := help
 .PHONY: help install env initdb makemigrations migrate setup run seed reset-demo superuser expire test lint format check \
-	deploy-check launch-accept collectstatic images shell clean docker-build docker-up docker-down docker-logs docker-seed docker-backup
+	deploy-check launch-accept collectstatic images shell clean
 
 help: ## 显示所有命令
 	@uv run python scripts/make_help.py
@@ -46,7 +45,7 @@ reset-demo: setup ## 清空数据库与上传文件后重新写入演示数据
 superuser: ## 交互式创建管理员账号
 	$(MANAGE) createsuperuser
 
-expire: ## 取消超时未支付订单并处理候补（生产环境由 scheduler 每 5 分钟执行）
+expire: ## 取消超时未支付订单
 	$(MANAGE) expire_orders
 
 images: ## 按 scripts/fetch_images.py 中的清单下载授权图片
@@ -83,23 +82,3 @@ shell: ## 进入 Django shell
 
 clean: ## 清理 __pycache__ 与 staticfiles
 	@uv run python -c "import pathlib, shutil; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__') if '.venv' not in p.parts]; shutil.rmtree('staticfiles', ignore_errors=True)"
-
-# ---------- Docker 生产部署 ----------
-
-docker-build: ## 构建生产镜像
-	$(COMPOSE) build
-
-docker-up: ## 启动 MySQL + Web + 定时任务 + Nginx
-	$(COMPOSE) up -d --build
-
-docker-down: ## 停止全部容器（数据卷保留）
-	$(COMPOSE) down
-
-docker-logs: ## 跟踪容器日志
-	$(COMPOSE) logs -f --tail=100
-
-docker-seed: ## 在容器中写入演示数据
-	$(COMPOSE) exec web python manage.py seed_demo
-
-docker-backup: ## 立即备份数据库与上传文件到 backups/（平时每天自动备份）
-	$(COMPOSE) exec backup bash /backup.sh once

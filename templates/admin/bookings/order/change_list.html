@@ -1,9 +1,7 @@
 {% extends "admin/change_list.html" %}
 
 {% block object-tools-items %}
-  <li><a href="{% url 'admin:bookings_order_reports' %}">经营报表</a></li>
   <li><a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a></li>
-  <li><a href="{% url 'staff:board' %}">手机工作台</a></li>
   <li><a href="{% url 'admin:bookings_order_available_rooms' %}">可用房间查询</a></li>
   {{ block.super }}
 {% endblock %}

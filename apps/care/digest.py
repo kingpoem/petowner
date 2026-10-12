@@ -7,7 +7,6 @@ from datetime import date, datetime, time, timedelta
 from django.utils import timezone
 
 from apps.bookings.models import Order
-from apps.care.models import ServiceRecord
 from apps.notifications.services import notify_owner
 
 

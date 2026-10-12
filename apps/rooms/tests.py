@@ -1,12 +1,11 @@
 from decimal import Decimal
 
-from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 
 from apps.pets.models import PetSize
 from apps.testing import days, make_order, make_pet, make_room
 
-from .models import PriceRule, Room
+from .models import Room
 from .pricing import quote
 
 
@@ -22,26 +21,6 @@ class PricingTests(TestCase):
         self.assertEqual(q.discount, 0)
         self.assertEqual(q.surcharged_nights, [])
 
-    def test_holiday_rule_applies_only_inside_range(self):
-        PriceRule.objects.create(name="假期", start_date=days(2), end_date=days(2), multiplier=Decimal("1.5"))
-        q = quote(self.room, days(1), days(4))
-        self.assertEqual([n.price for n in q.nights], [Decimal("100.00"), Decimal("150.00"), Decimal("100.00")])
-        self.assertEqual(q.total, Decimal("350.00"))
-        self.assertEqual(len(q.surcharged_nights), 1)
-
-    def test_overlapping_rules_take_highest_multiplier(self):
-        PriceRule.objects.create(name="周末", start_date=days(1), end_date=days(1), multiplier=Decimal("1.2"))
-        PriceRule.objects.create(name="春节", start_date=days(1), end_date=days(1), multiplier=Decimal("1.8"))
-        q = quote(self.room, days(1), days(2))
-        self.assertEqual(q.nights[0].price, Decimal("180.00"))
-        self.assertEqual(q.nights[0].rule, "春节")
-
-    def test_inactive_rule_ignored(self):
-        PriceRule.objects.create(
-            name="停用", start_date=days(1), end_date=days(5), multiplier=Decimal("2"), is_active=False
-        )
-        self.assertEqual(quote(self.room, days(1), days(3)).total, Decimal("200.00"))
-
     def test_long_stay_discount(self):
         q = quote(self.room, days(1), days(8))
         self.assertEqual(q.subtotal, Decimal("700.00"))
@@ -56,11 +35,6 @@ class PricingTests(TestCase):
 
 
 class RoomModelTests(TestCase):
-    def test_price_rule_date_order(self):
-        rule = PriceRule(name="错", start_date=days(5), end_date=days(1), multiplier=Decimal("1.2"))
-        with self.assertRaises(ValidationError):
-            rule.full_clean()
-
     def test_display_and_amenities(self):
         room = make_room(name="", number="A1", amenities="空调， 监控,,独立活动区")
         self.assertEqual(room.display_name, "标准间 A1")

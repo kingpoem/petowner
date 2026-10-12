@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_POST
 
-from apps.bookings.models import Order, Waitlist, find_available_rooms
+from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
 from apps.notifications.models import Notification
 from apps.pets.models import Pet
@@ -37,7 +37,6 @@ from .forms import (
     ReviewForm,
     SearchForm,
     SmsPasswordResetForm,
-    WaitlistForm,
 )
 
 
@@ -73,17 +72,13 @@ def _public_reviews():
 # ---------- 公开页面 ----------
 
 
-def _listed_rooms(request):
-    rooms = Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
-    store = getattr(request, "store", None)
-    if store is not None:
-        rooms = rooms.filter(Q(store=store) | Q(store__isnull=True))
-    return rooms
+def _listed_rooms():
+    return Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
 
 
 def home(request):
     rating = Review.objects.aggregate(avg=Avg("rating"), total=Count("id"))
-    rooms = _listed_rooms(request)
+    rooms = _listed_rooms()
     tomorrow = timezone.localdate() + timedelta(days=1)
     context = {
         "rooms": rooms[:6],
@@ -98,7 +93,7 @@ def home(request):
 
 def room_list(request):
     form = SearchForm(request.GET or None)
-    rooms = _listed_rooms(request)
+    rooms = _listed_rooms()
     results, searched = None, False
     if request.GET and form.is_valid():
         searched = True
@@ -109,18 +104,15 @@ def room_list(request):
             d["check_out"],
             room_type=d["room_type"],
             listed_only=True,
-            store=getattr(request, "store", None),
         )
         results = [(room, quote(room, d["check_in"], d["check_out"])) for room in available]
     elif request.GET.get("species"):
         rooms = rooms.filter(Q(pet_type=request.GET["species"]) | Q(pet_type=Room.PetType.ANY))
-    context = {"form": form, "rooms": rooms, "results": results, "searched": searched}
-    if searched and not results and request.user.is_authenticated and hasattr(request.user, "owner_profile"):
-        context["waitlist_form"] = WaitlistForm(
-            owner=request.user.owner_profile,
-            initial={k: form.cleaned_data[k] for k in ("check_in", "check_out", "room_type")},
-        )
-    return render(request, "web/room_list.html", context)
+    return render(
+        request,
+        "web/room_list.html",
+        {"form": form, "rooms": rooms, "results": results, "searched": searched},
+    )
 
 
 def room_detail(request, pk):
@@ -259,30 +251,11 @@ def dashboard(request):
     context = {
         "active_orders": orders.filter(status__in=Order.ACTIVE_STATUSES).order_by("check_in"),
         "pets": owner.pets.all(),
-        "waitlist": Waitlist.objects.filter(
-            pet__owner=owner, status__in=[Waitlist.Status.WAITING, Waitlist.Status.NOTIFIED], check_in__gte=today
-        ).select_related("pet"),
         "to_review": orders.filter(status=Order.Status.COMPLETED, review__isnull=True)[:3],
         "notifications": request.user.notifications.filter(is_read=False)[:5],
         "vaccine_warnings": [p for p in owner.pets.all() if not p.vaccine_valid_through(today + timedelta(days=30))],
     }
     return render(request, "web/dashboard.html", context)
-
-
-@owner_required
-def loyalty_center(request):
-    from apps.loyalty.models import PointLedger
-    from apps.loyalty.services import available_coupons, membership_tier
-
-    owner = request.owner
-    ledger = PointLedger.objects.filter(owner=owner).select_related("order")[:40]
-    coupons = available_coupons(owner, store=getattr(request, "store", None))
-    tier = membership_tier(owner)
-    return render(
-        request,
-        "web/loyalty.html",
-        {"ledger": ledger, "coupons": coupons, "tier": tier, "redeem_rate": settings.LOYALTY_POINTS_PER_YUAN_REDEEM},
-    )
 
 
 @owner_required
@@ -322,36 +295,18 @@ def booking_create(request):
         messages.info(request, "预约前请先添加宠物档案")
         return redirect(f"{reverse('web:pet_create')}?{urlencode({'next': request.get_full_path()})}")
     initial = {k: request.GET.get(k) for k in ("pet", "room", "check_in", "check_out") if request.GET.get(k)}
-    form = BookingForm(
-        request.POST or None, owner=request.owner, store=getattr(request, "store", None), initial=initial
-    )
+    form = BookingForm(request.POST or None, owner=request.owner, initial=initial)
     booking_quote = _parse_quote(form.data if form.is_bound else initial)
     if request.method == "POST":
         with transaction.atomic():
-            # 锁住房间行，使同一房间的并发预约串行校验，避免超订
             room_id = form.data.get("room", "")
             if room_id.isdigit():
                 list(Room.objects.select_for_update().filter(pk=room_id))
             if form.is_valid():
-                from apps.loyalty.services import apply_coupon, redeem_points
-
-                order = form.save(commit=False)
-                form.apply_loyalty(order)
-                order.save()
-                if order.points_redeemed:
-                    redeem_points(request.owner, order.points_redeemed, order=order)
-                if form.coupon and form.coupon_discount:
-                    apply_coupon(form.coupon, request.owner, order, form.coupon_discount)
-                Waitlist.objects.filter(
-                    pet=order.pet, status=Waitlist.Status.NOTIFIED, check_in=order.check_in, check_out=order.check_out
-                ).update(status=Waitlist.Status.BOOKED)
+                order = form.save()
                 messages.success(request, f"预约成功，订单号 {order.order_no}，请完成支付以锁定房间")
                 return redirect("web:order_pay", order_no=order.order_no)
-    return render(
-        request,
-        "web/orders/create.html",
-        {"form": form, "quote": booking_quote, "owner_points": request.owner.points},
-    )
+    return render(request, "web/orders/create.html", {"form": form, "quote": booking_quote})
 
 
 def _owner_order(request, order_no):
@@ -383,9 +338,6 @@ def order_detail(request, order_no):
     if order.status == Order.Status.CANCELLED:
         steps = [steps[0], ("预约已取消", order.updated_at, True)]
     paid = order.net_paid
-    from apps.billing.models import Invoice
-
-    invoice = Invoice.objects.filter(order=order).first()
     context = {
         "order": order,
         "records": records,
@@ -394,8 +346,6 @@ def order_detail(request, order_no):
         "paid": paid,
         "balance_due": order.balance_due,
         "cancel_form": CancelForm(),
-        "invoice": invoice,
-        "can_invoice": paid > 0 and invoice is None,
     }
     if order.can_cancel:
         fee = order.cancellation_fee()
@@ -475,16 +425,13 @@ def order_reschedule(request, order_no):
     return render(request, "web/orders/reschedule.html", context)
 
 
-def _quote_context(booking_quote, order=None, loyalty=None) -> dict:
+def _quote_context(booking_quote, order=None) -> dict:
     """费用明细片段的上下文；传入订单时附带与已付金额的差额（改期场景）。"""
-    context = {"quote": booking_quote, "order": order, "loyalty": loyalty}
-    if booking_quote is not None and loyalty:
-        context["payable"] = loyalty["payable"]
-    elif booking_quote is not None:
+    context = {"quote": booking_quote, "order": order}
+    if booking_quote is not None:
         context["payable"] = booking_quote.total
     if order is not None and booking_quote is not None:
-        base = loyalty["payable"] if loyalty else booking_quote.total
-        diff = base - order.net_paid
+        diff = booking_quote.total - order.net_paid
         context.update(paid=order.net_paid, top_up=max(diff, 0), refund=max(-diff, 0))
     return context
 
@@ -506,22 +453,7 @@ def quote_preview(request):
     """预约/改期页面的费用明细片段，供前端在房间或日期变化时局部刷新。"""
     order = _owner_order(request, request.GET["order"]) if request.GET.get("order") else None
     booking_quote = _parse_quote(request.GET)
-    loyalty = None
-    if booking_quote is not None and not order:
-        from apps.loyalty.services import preview_loyalty_discount
-
-        try:
-            points = int(request.GET.get("redeem_points") or 0)
-        except (TypeError, ValueError):
-            points = 0
-        loyalty = preview_loyalty_discount(
-            request.owner,
-            booking_quote.total,
-            coupon_code=request.GET.get("coupon_code", ""),
-            redeem_points=points,
-            store=getattr(request, "store", None),
-        )
-    return render(request, "web/orders/_quote.html", _quote_context(booking_quote, order, loyalty))
+    return render(request, "web/orders/_quote.html", _quote_context(booking_quote, order))
 
 
 @owner_required
@@ -533,76 +465,9 @@ def order_review(request, order_no):
     form = ReviewForm(request.POST or None, instance=Review(order=order))
     if request.method == "POST" and form.is_valid():
         form.save()
-        from apps.loyalty.services import issue_review_coupon
-
-        coupon = issue_review_coupon(request.owner, order)
-        if coupon:
-            messages.success(request, f"感谢您的评价！已赠送优惠码 {coupon.code}")
-        else:
-            messages.success(request, "感谢您的评价！")
+        messages.success(request, "感谢您的评价！")
         return redirect(order)
     return render(request, "web/orders/review.html", {"order": order, "form": form})
-
-
-@owner_required
-def order_invoice(request, order_no):
-    from apps.billing.models import Invoice
-    from apps.billing.services import create_invoice_request, ensure_invoice_pdf
-
-    order = _owner_order(request, order_no)
-    existing = Invoice.objects.filter(order=order).first()
-    if existing:
-        ensure_invoice_pdf(existing)
-        return redirect(existing.pdf.url)
-    if order.net_paid <= 0:
-        messages.info(request, "订单尚未支付，无法开具收据")
-        return redirect(order)
-    if request.method == "POST":
-        try:
-            inv = create_invoice_request(
-                order,
-                title=request.POST.get("title") or request.owner.name,
-                tax_no=request.POST.get("tax_no") or "",
-                email=request.POST.get("email") or request.owner.email,
-                kind=request.POST.get("kind") or Invoice.Kind.PERSONAL,
-            )
-        except ValidationError as exc:
-            messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
-            return redirect(order)
-        messages.success(request, f"电子收据 {inv.receipt_no} 已生成")
-        return redirect(inv.pdf.url)
-    return render(request, "web/orders/invoice.html", {"order": order})
-
-
-# ---------- 候补 ----------
-
-
-@owner_required
-@require_POST
-def waitlist_create(request):
-    form = WaitlistForm(request.POST, owner=request.owner)
-    if form.is_valid():
-        entry = form.save()
-        if entry.available_rooms():
-            entry.delete()
-            messages.info(request, "该时段已有空房，直接预约即可")
-            return redirect(
-                f"{reverse('web:booking_create')}?pet={entry.pet_id}&check_in={entry.check_in}&check_out={entry.check_out}"
-            )
-        messages.success(request, "已加入候补，一旦有房会第一时间通知您")
-        return redirect("web:dashboard")
-    messages.error(request, "候补登记失败：" + "；".join(e for errs in form.errors.values() for e in errs))
-    return redirect("web:room_list")
-
-
-@owner_required
-@require_POST
-def waitlist_cancel(request, pk):
-    entry = get_object_or_404(Waitlist, pk=pk, pet__owner=request.owner)
-    entry.status = Waitlist.Status.CANCELLED
-    entry.save(update_fields=["status"])
-    messages.success(request, "已取消候补")
-    return redirect("web:dashboard")
 
 
 # ---------- 通知 ----------

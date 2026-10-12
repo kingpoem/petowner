@@ -7,10 +7,9 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
   <div>
     <h1 class="h3 mb-1">你好，{{ request.owner.name }}</h1>
-    <p class="text-muted mb-0">在这里管理预约、查看毛孩子的护理动态 · 可用积分 <a href="{% url 'web:loyalty' %}" class="text-primary fw-semibold text-decoration-none">{{ request.owner.points }}</a></p>
+    <p class="text-muted mb-0">在这里管理预约、查看毛孩子的护理动态</p>
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-primary" href="{% url 'web:loyalty' %}"><i class="bi bi-gift me-1"></i>会员中心</a>
     <a class="btn btn-primary" href="{% url 'web:booking_create' %}"><i class="bi bi-plus-lg me-1"></i>新建预约</a>
   </div>
 </div>
@@ -80,9 +79,8 @@
   </div>
 </div>
 
-{% if to_review or waitlist %}
+{% if to_review %}
 <div class="row g-4 mt-0">
-  {% if to_review %}
   <div class="col-md-6">
     <div class="ps-card p-4 h-100">
       <h5 class="mb-3">待评价</h5>
@@ -94,23 +92,6 @@
       {% endfor %}
     </div>
   </div>
-  {% endif %}
-  {% if waitlist %}
-  <div class="col-md-6">
-    <div class="ps-card p-4 h-100">
-      <h5 class="mb-3">我的候补</h5>
-      {% for entry in waitlist %}
-        <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-          <span class="small">{{ entry.pet.name }} · {{ entry.check_in|date:"n/j" }}-{{ entry.check_out|date:"n/j" }} <span class="badge text-bg-{{ entry.status|badge }}">{{ entry.get_status_display }}</span></span>
-          <div class="d-flex gap-1">
-            {% if entry.status == 'notified' %}<a class="btn btn-sm btn-primary" href="{% url 'web:booking_create' %}?pet={{ entry.pet_id }}&check_in={{ entry.check_in|date:'Y-m-d' }}&check_out={{ entry.check_out|date:'Y-m-d' }}">去预约</a>{% endif %}
-            <form method="post" action="{% url 'web:waitlist_cancel' entry.pk %}">{% csrf_token %}<button class="btn btn-sm btn-light">取消</button></form>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
 </div>
 {% endif %}
 {% endblock %}

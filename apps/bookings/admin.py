@@ -3,7 +3,6 @@ from datetime import date, timedelta
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import models
 from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils import timezone
@@ -12,15 +11,22 @@ from apps.care.models import ServiceRecord
 from apps.pets.models import Species
 
 from .calendar import build_calendar
-from .models import Order, Payment, Waitlist, find_available_rooms, process_waitlist
-from .reports import build_report, chart, export_daily, export_orders, export_xlsx
+from .models import Order, Payment, find_available_rooms
 
 
 class ServiceRecordInline(admin.StackedInline):
     model = ServiceRecord
     extra = 0
     verbose_name_plural = "服务进度（喂养与护理记录）"
-    fields = (("feeding_time", "staff"), "care_content", ("appetite", "health_status"), "health_note", "photo")
+    fields = (
+        "code",
+        ("feeding_time", "staff"),
+        "care_content",
+        ("appetite", "health_status"),
+        "health_note",
+        "photo",
+    )
+    readonly_fields = ("code",)
 
 
 class PaymentInline(admin.TabularInline):
@@ -46,34 +52,6 @@ class AvailableRoomForm(forms.Form):
         return data
 
 
-class ReportPeriodForm(forms.Form):
-    PRESETS = {
-        "7": "近 7 天",
-        "30": "近 30 天",
-        "90": "近 90 天",
-        "365": "近 12 个月",
-        "month": "本月",
-        "custom": "自定义",
-    }
-    MAX_DAYS = 731
-
-    preset = forms.ChoiceField(label="统计周期", choices=PRESETS.items(), required=False, initial="30")
-    start = forms.DateField(label="开始日期", required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    end = forms.DateField(label="结束日期", required=False, widget=forms.DateInput(attrs={"type": "date"}))
-
-    def period(self):
-        today = timezone.localdate()
-        data = self.cleaned_data if self.is_bound and self.is_valid() else {}
-        preset = data.get("preset") or "30"
-        if preset == "custom" and data.get("start") and data.get("end"):
-            start, end = sorted((data["start"], data["end"]))
-            return max(start, end - timedelta(days=self.MAX_DAYS - 1)), end
-        if preset == "month":
-            return today.replace(day=1), today
-        days = int(preset) if preset.isdigit() else 30
-        return today - timedelta(days=days - 1), today
-
-
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
@@ -97,7 +75,6 @@ class OrderAdmin(admin.ModelAdmin):
         "order_no",
         "amount",
         "discount",
-        "points_redeemed",
         "payment_status",
         "status",
         "source",
@@ -115,7 +92,7 @@ class OrderAdmin(admin.ModelAdmin):
             "费用与状态",
             {
                 "fields": (
-                    ("amount", "discount", "points_redeemed"),
+                    ("amount", "discount"),
                     ("payment_status", "status"),
                     "source",
                     ("cancel_reason", "cancel_fee"),
@@ -138,21 +115,11 @@ class OrderAdmin(admin.ModelAdmin):
     def days(self, obj):
         return obj.days
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        store = getattr(request, "store", None)
-        if store is not None:
-            qs = qs.filter(models.Q(store=store) | models.Q(room__store=store))
-        return qs
-
     def get_changeform_initial_data(self, request):
         initial = super().get_changeform_initial_data(request)
         for key in ("room", "pet", "check_in", "check_out", "store"):
             if request.GET.get(key):
                 initial[key] = request.GET[key]
-        store = getattr(request, "store", None)
-        if store and "store" not in initial:
-            initial["store"] = store.pk
         return initial
 
     def get_object(self, request, object_id, from_field=None):
@@ -213,38 +180,9 @@ class OrderAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.available_rooms_view),
                 name="bookings_order_available_rooms",
             ),
-            path("reports/", self.admin_site.admin_view(self.reports_view), name="bookings_order_reports"),
             path("calendar/", self.admin_site.admin_view(self.calendar_view), name="bookings_order_calendar"),
         ]
         return custom + super().get_urls()
-
-    def reports_view(self, request):
-        if not (request.user.has_perm("bookings.view_order") and request.user.has_perm("bookings.view_payment")):
-            raise PermissionDenied
-        form = ReportPeriodForm(request.GET or None)
-        start, end = form.period()
-        store = getattr(request, "store", None)
-        report = build_report(start, end, store=store)
-        export = request.GET.get("export")
-        if export == "daily":
-            return export_daily(report)
-        if export == "orders":
-            return export_orders(report)
-        if export == "xlsx":
-            return export_xlsx(report)
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "经营报表" + (f" · {store.name}" if store else ""),
-            "opts": self.model._meta,
-            "form": ReportPeriodForm(
-                {"preset": form.data.get("preset") or "30", "start": start.isoformat(), "end": end.isoformat()}
-            ),
-            "report": report,
-            "chart": chart(report),
-            "query": request.GET.urlencode(),
-            "report_store": store,
-        }
-        return TemplateResponse(request, "admin/bookings/order/reports.html", context)
 
     def calendar_view(self, request):
         if not request.user.has_perm("bookings.view_order"):
@@ -258,8 +196,7 @@ class OrderAdmin(admin.ModelAdmin):
             nights = int(request.GET.get("nights") or 14)
         except ValueError:
             nights = 14
-        store = getattr(request, "store", None)
-        cal = build_calendar(start, nights, store=store)
+        cal = build_calendar(start, nights)
         context = {
             **self.admin_site.each_context(request),
             "title": "房态日历",
@@ -312,21 +249,3 @@ class PaymentAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-@admin.register(Waitlist)
-class WaitlistAdmin(admin.ModelAdmin):
-    list_display = ("pet", "owner_phone", "room_type", "check_in", "check_out", "status", "created_at", "notified_at")
-    list_filter = ("status", "room_type")
-    search_fields = ("pet__name", "pet__owner__phone")
-    autocomplete_fields = ("pet",)
-    actions = ("run_matching",)
-
-    @admin.display(description="主人电话")
-    def owner_phone(self, obj):
-        return obj.pet.owner.phone
-
-    @admin.action(description="立即匹配空房并通知")
-    def run_matching(self, request, queryset):
-        count = process_waitlist()
-        self.message_user(request, f"已通知 {count} 位候补顾客", messages.SUCCESS)

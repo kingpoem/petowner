@@ -77,10 +77,6 @@ def settle_payment(payment: Payment, provider_trade_no: str = "") -> Payment:
     order.save(update_fields=["payment_status", "paid_at", "updated_at"])
     title = "补款成功" if top_up else "支付成功"
     order._notify(title, f"订单 {order} 已支付 ¥{payment.amount}，期待 {order.pet.name} 的到来。", "success")
-    if not top_up:
-        from apps.loyalty.services import award_points
-
-        award_points(order.owner, payment.amount, order=order)
     return payment
 
 
@@ -161,8 +157,11 @@ def retry_refund(payment: Payment) -> bool:
         if payment.method == Payment.Method.ALIPAY and hasattr(gateway, "query_refund"):
             try:
                 node = gateway.query_refund(last_pay, payment)
-                if node.get("refund_status") == "REFUND_SUCCESS" or Decimal(node.get("refund_amount") or 0) >= payment.amount:
-                    payment.provider_trade_no = node.get("trade_no") or last_pay.provider_trade_no or payment.transaction_no
+                refunded = Decimal(node.get("refund_amount") or 0) >= payment.amount
+                if node.get("refund_status") == "REFUND_SUCCESS" or refunded:
+                    payment.provider_trade_no = (
+                        node.get("trade_no") or last_pay.provider_trade_no or payment.transaction_no
+                    )
                     payment.last_error = ""
                     payment.save(update_fields=["provider_trade_no", "last_error", "retry_count", "updated_at"])
                     return True

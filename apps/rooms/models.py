@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -86,30 +85,3 @@ class Room(models.Model):
         if new_status != self.status:
             self.status = new_status
             self.save(update_fields=["status"])
-
-
-class PriceRule(models.Model):
-    name = models.CharField("规则名称", max_length=50, help_text="如：国庆假期")
-    start_date = models.DateField("开始日期")
-    end_date = models.DateField("结束日期", help_text="含当天")
-    multiplier = models.DecimalField(
-        "价格倍率",
-        max_digits=4,
-        decimal_places=2,
-        default=Decimal("1.20"),
-        validators=[MinValueValidator(Decimal("0.10"))],
-        help_text="1.20 表示上浮 20%，0.90 表示九折",
-    )
-    is_active = models.BooleanField("启用", default=True)
-
-    class Meta:
-        verbose_name = "价格规则"
-        verbose_name_plural = verbose_name
-        ordering = ["start_date"]
-
-    def __str__(self):
-        return f"{self.name}（{self.start_date:%m-%d}~{self.end_date:%m-%d} ×{self.multiplier}）"
-
-    def clean(self):
-        if self.start_date and self.end_date and self.end_date < self.start_date:
-            raise ValidationError({"end_date": "结束日期不能早于开始日期"})

@@ -12,8 +12,6 @@
   <div class="d-flex gap-2">
     {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>{% if order.payment_status == 'partial' %}补差价{% else %}去支付{% endif %} ¥{{ balance_due }}</a>{% endif %}
     {% if order.can_review %}<a class="btn btn-primary" href="{% url 'web:order_review' order.order_no %}"><i class="bi bi-star me-1"></i>评价本次服务</a>{% endif %}
-    {% if can_invoice %}<a class="btn btn-light" href="{% url 'web:order_invoice' order.order_no %}"><i class="bi bi-receipt me-1"></i>开具收据</a>{% endif %}
-    {% if invoice %}<a class="btn btn-outline-primary" href="{{ invoice.pdf.url }}"><i class="bi bi-file-earmark-pdf me-1"></i>下载收据</a>{% endif %}
     {% if order.can_reschedule %}<a class="btn btn-light" href="{% url 'web:order_reschedule' order.order_no %}"><i class="bi bi-calendar2-range me-1"></i>改期 / 换房</a>{% endif %}
     {% if order.can_cancel %}<button class="btn btn-light text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">取消预约</button>{% endif %}
   </div>
@@ -42,12 +40,13 @@
               <div class="d-flex flex-wrap justify-content-between gap-2">
                 <span class="fw-semibold">{{ record.feeding_time|date:"n月j日 H:i" }}</span>
                 <span>
-                  <span class="badge rounded-pill text-bg-{{ record.health_status|badge }}">健康：{{ record.get_health_status_display }}</span>
-                  {% if record.appetite != 'na' %}<span class="badge rounded-pill text-bg-light border">{{ record.get_appetite_display }}</span>{% endif %}
+                  <span class="badge rounded-pill text-bg-secondary">{{ record.code }}</span>
+                  <span class="badge rounded-pill text-bg-{% if record.needs_attention %}danger{% else %}success{% endif %}">健康：{{ record.health_status }}</span>
+                  {% if record.appetite %}<span class="badge rounded-pill text-bg-light border">{{ record.appetite }}</span>{% endif %}
                 </span>
               </div>
               <p class="mb-1 mt-1">{{ record.care_content }}</p>
-              {% if record.health_note %}<p class="small mb-1 {% if record.health_status == 'abnormal' %}text-danger{% else %}text-warning-emphasis{% endif %}"><i class="bi {% if record.health_status == 'abnormal' %}bi-exclamation-circle{% else %}bi-info-circle{% endif %} me-1"></i>{{ record.health_note }}</p>{% endif %}
+              {% if record.health_note %}<p class="small mb-1 {% if record.needs_attention %}text-danger{% else %}text-warning-emphasis{% endif %}"><i class="bi {% if record.needs_attention %}bi-exclamation-circle{% else %}bi-info-circle{% endif %} me-1"></i>{{ record.health_note }}</p>{% endif %}
               {% if record.photo %}<a href="{{ record.photo.url }}" data-lightbox="care" data-caption="{{ record.feeding_time|date:'n月j日 H:i' }} · {{ record.care_content|truncatechars:40 }}" aria-label="查看护理照片大图"><img class="timeline-photo mt-2" src="{% thumb record.photo 480 %}" alt="护理照片" loading="lazy"></a>{% endif %}
               <div class="small text-muted mt-1">护理师 {{ record.staff }}</div>
             </div>

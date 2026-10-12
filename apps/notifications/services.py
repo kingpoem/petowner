@@ -20,7 +20,7 @@ def notify_owner(
 ):
     """给已开通线上账号的宠物主人发送站内通知；可选同步业务短信。
 
-    sms_event 取值：care / health / waitlist，需在 SMS_NOTIFY_EVENTS 中启用。
+    sms_event 取值：care / health，需在 SMS_NOTIFY_EVENTS 中启用。
     """
     note = None
     if owner.user_id is not None:

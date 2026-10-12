@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 
-from apps.bookings.models import Order, Payment, Waitlist
+from apps.bookings.models import Order, Payment
 from apps.care.models import Review
 from apps.images import thumbnail_name, thumbnail_url
 from apps.notifications.models import Notification
@@ -388,26 +388,6 @@ class OwnerAreaTests(TestCase):
         )
         self.assertEqual(order.review.rating, 4)
 
-    def test_waitlist_join_and_cancel(self):
-        make_order(room=self.room, start=5, nights=2)
-        self.client.post(
-            reverse("web:waitlist_create"),
-            {"pet": self.pet.pk, "room_type": "", "check_in": days(5), "check_out": days(7)},
-        )
-        entry = Waitlist.objects.get(pet=self.pet)
-        self.assertEqual(entry.status, Waitlist.Status.WAITING)
-        self.client.post(reverse("web:waitlist_cancel", args=[entry.pk]))
-        entry.refresh_from_db()
-        self.assertEqual(entry.status, Waitlist.Status.CANCELLED)
-
-    def test_waitlist_redirects_when_rooms_free(self):
-        response = self.client.post(
-            reverse("web:waitlist_create"),
-            {"pet": self.pet.pk, "room_type": "", "check_in": days(5), "check_out": days(7)},
-        )
-        self.assertTrue(response["Location"].startswith(reverse("web:booking_create")))
-        self.assertFalse(Waitlist.objects.exists())
-
     def test_notification_open_marks_read_and_blocks_external_links(self):
         safe = Notification.objects.create(user=self.owner.user, title="a", link=reverse("web:order_list"))
         evil = Notification.objects.create(user=self.owner.user, title="b", link="https://evil.example.com/")
@@ -505,11 +485,9 @@ class AdminTests(TestCase):
             reverse("admin:bookings_order_change", args=[self.order.pk]),
             reverse("admin:bookings_order_add"),
             reverse("admin:bookings_payment_changelist"),
-            reverse("admin:bookings_waitlist_changelist"),
             reverse("admin:pets_owner_changelist"),
             reverse("admin:pets_pet_changelist"),
             reverse("admin:rooms_room_changelist"),
-            reverse("admin:rooms_pricerule_changelist"),
             reverse("admin:care_servicerecord_changelist"),
             reverse("admin:care_review_changelist"),
             reverse("admin:notifications_notification_changelist"),
@@ -520,7 +498,7 @@ class AdminTests(TestCase):
     def test_dashboard_stats(self):
         from apps.bookings.templatetags.admin_dashboard import dashboard_stats
 
-        stats = dashboard_stats({"request": None, "CURRENT_STORE": None})
+        stats = dashboard_stats({"request": None})
         self.assertEqual(stats["boarding"], 1)
         self.assertEqual(stats["capacity"], 1)
         self.assertEqual(stats["occupancy"], 100)
