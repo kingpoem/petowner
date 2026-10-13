@@ -53,7 +53,7 @@
   <a class="house-teaser" href="{% url 'hospitality:house' %}">
     <span class="pulse" aria-hidden="true"></span>
     <strong>此刻 {{ board.occupied }} 位住客在店里</strong>
-    <span class="small text-muted">去看看他们的下午</span>
+    <span class="small text-muted">{{ board.quiet_line }}</span>
   </a>
   <div class="row g-3">
     <div class="col-6 col-md-3"><div class="stat-card"><div class="num">{{ room_count }}</div><div class="small text-muted">间独立寄养房</div></div></div>

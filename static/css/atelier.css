@@ -58,9 +58,27 @@ h2,
   padding: 4.5rem 0 3rem;
   color: #f6f1ea;
   background:
-    linear-gradient(120deg, rgba(18, 32, 28, 0.78), rgba(31, 42, 68, 0.35)),
-    url("../img/stock/ambient-suite.jpg") center/cover;
+    radial-gradient(520px 260px at 88% 10%, rgba(242, 112, 63, 0.55), transparent 60%),
+    radial-gradient(420px 280px at 10% 90%, rgba(42, 157, 143, 0.4), transparent 55%),
+    linear-gradient(155deg, #14241f 0%, #1c2b4a 58%, #3a261f 100%);
   border-radius: 0 0 40px 40px;
+  overflow: hidden;
+}
+
+.house-hero::after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  right: 8%;
+  bottom: -80px;
+  border-radius: 46% 54% 48% 52%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  animation: drift 14s ease-in-out infinite;
+}
+
+@keyframes drift {
+  50% { transform: translateY(-18px) rotate(8deg); }
 }
 
 .house-hero h1 {
@@ -128,6 +146,108 @@ h2,
   70% {
     box-shadow: 0 0 0 10px rgba(42, 157, 143, 0);
   }
+}
+
+.atlas-frame {
+  background: #fff;
+  border-radius: 28px;
+  padding: 0.5rem 0.5rem 1rem;
+  box-shadow: var(--ps-shadow);
+  overflow-x: auto;
+}
+
+.atlas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.wing-label {
+  font-size: 15px;
+  fill: #6b7280;
+  letter-spacing: 0.12em;
+}
+
+.kennel rect {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.kennel.wing-dog rect { fill: #e36a3a; }
+.kennel.wing-cat rect { fill: #247f74; }
+.kennel.wing-any rect { fill: #2c3a5a; }
+.kennel.vacant rect { fill: #efe6dc; }
+.kennel.live rect {
+  animation: kennel-breath var(--breath, 4s) ease-in-out infinite;
+}
+.kennel.alert rect {
+  fill: #c4472d;
+  animation-duration: calc(var(--breath, 2s) * 0.85);
+}
+
+.kennel-name {
+  fill: #fff;
+  font-size: 22px;
+  font-family: var(--ps-display);
+}
+
+.kennel.vacant .kennel-name,
+.kennel.vacant .kennel-caption {
+  fill: #6b6258;
+}
+
+.kennel-caption,
+.kennel-meta {
+  fill: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+}
+
+@keyframes kennel-breath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kennel.live rect,
+  .house-hero::after {
+    animation: none;
+  }
+}
+
+.breath-scrub {
+  padding: 0.25rem 1.25rem 1rem;
+}
+
+.breath-scrub input[type="range"] {
+  width: 100%;
+  accent-color: var(--ps-primary);
+}
+
+.tiny {
+  font-size: 0.75rem;
+}
+
+.weave-thread {
+  display: inline-block;
+  margin: 0.35rem 0.35rem 0 0;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.tone-kin {
+  background: #e7f6f3;
+  color: #1d6b62;
+}
+
+.tone-calm {
+  background: #f4efe8;
+  color: #5c5348;
+}
+
+.tone-watch {
+  background: #fde8e4;
+  color: #9a3412;
 }
 
 .guest-card {

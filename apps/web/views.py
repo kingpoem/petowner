@@ -22,6 +22,7 @@ from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
 from apps.hospitality.house import house_board
 from apps.hospitality.models import StoreNotice
+from apps.hospitality.pulse import weave
 from apps.hospitality.services import ensure_member, preview_reschedule, price_booking
 from apps.notifications.models import Notification
 from apps.pets.models import Pet
@@ -321,7 +322,11 @@ def booking_create(request):
         if form.stay is not None:
             stay = form.stay
             booking_quote = stay.room_quote
-    return render(request, "web/orders/create.html", {"form": form, "quote": booking_quote, "stay": stay})
+    return render(
+        request,
+        "web/orders/create.html",
+        {"form": form, "quote": booking_quote, "stay": stay, "weave": _company_weave(params, request.owner)},
+    )
 
 
 def _owner_order(request, order_no):
@@ -533,7 +538,37 @@ def quote_preview(request):
     """预约/改期页面的费用明细片段，供前端在房间或日期变化时局部刷新。"""
     order = _owner_order(request, request.GET["order"]) if request.GET.get("order") else None
     booking_quote, stay = _stay_for(request.GET, request.owner, order)
-    return render(request, "web/orders/_quote.html", _quote_context(booking_quote, order, stay))
+    context = _quote_context(booking_quote, order, stay)
+    context["weave"] = _company_weave(request.GET, request.owner)
+    return render(request, "web/orders/_quote.html", context)
+
+
+def _company_weave(params, owner):
+    if owner is None or not hasattr(params, "get"):
+        return None
+    try:
+        check_in = date.fromisoformat(str(params.get("check_in") or ""))
+        check_out = date.fromisoformat(str(params.get("check_out") or ""))
+    except ValueError:
+        return None
+    if not (0 < (check_out - check_in).days <= settings.MAX_BOARDING_DAYS):
+        return None
+    pet_id = params.get("pet")
+    if not pet_id or not str(pet_id).isdigit():
+        return None
+    pet = owner.pets.filter(pk=int(pet_id)).first()
+    if pet is None:
+        return None
+    company = (
+        Order.objects.filter(
+            status__in=Order.ACTIVE_STATUSES,
+            check_in__lt=check_out,
+            check_out__gt=check_in,
+        )
+        .exclude(pet_id=pet.pk)
+        .select_related("pet")
+    )
+    return weave(pet.species, pet.temperament, [(row.pet.species, row.pet.temperament) for row in company])
 
 
 @owner_required
