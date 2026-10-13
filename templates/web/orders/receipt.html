@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}收据 {{ order.order_no }}{% endblock %}
+
+{% block content %}
+<article class="receipt-sheet">
+  <div class="d-flex justify-content-between align-items-start gap-3">
+    <div>
+      <div class="eyebrow">{{ SITE.name }}</div>
+      <h1 class="mb-1">寄养收据</h1>
+      <div class="text-muted small">{{ SITE.address }} · {{ SITE.phone }}</div>
+    </div>
+    <button class="btn btn-primary no-print" onclick="window.print()">打印</button>
+  </div>
+  <div class="receipt-meta">
+    <div>单号 {{ order.order_no }}<br>状态 {{ order.get_status_display }} · {{ order.get_payment_status_display }}</div>
+    <div class="text-end">{{ order.pet.name }} · {{ order.pet.breed }}<br>{{ order.room.display_name }}</div>
+  </div>
+  <table>
+    <tbody>
+      {% for night in stay_quote.nights %}
+      <tr>
+        <td>{{ night.day|date:"Y-m-d" }} 房费{% if night.rule %} · {{ night.rule }}{% endif %}</td>
+        <td>¥{{ night.price }}</td>
+      </tr>
+      {% endfor %}
+      {% if stay_quote.discount %}
+      <tr>
+        <td>{{ stay_quote.discount_label }}</td>
+        <td>-¥{{ stay_quote.discount }}</td>
+      </tr>
+      {% endif %}
+      {% for line in addons %}
+      <tr>
+        <td>{{ line.service.name }} × {{ line.quantity }}</td>
+        <td>¥{{ line.line_total }}</td>
+      </tr>
+      {% endfor %}
+      {% if order.coupon_discount %}
+      <tr><td>优惠码 {{ order.coupon_code }}</td><td>-¥{{ order.coupon_discount }}</td></tr>
+      {% endif %}
+      {% if order.member_discount %}
+      <tr><td>会员折扣</td><td>-¥{{ order.member_discount }}</td></tr>
+      {% endif %}
+      {% if order.points_discount %}
+      <tr><td>积分抵扣 {{ order.points_redeemed }} 分</td><td>-¥{{ order.points_discount }}</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <div class="d-flex justify-content-between align-items-end mt-3 pt-3 border-top">
+    <div class="small text-muted">入住 {{ order.check_in|date:"Y-m-d" }}<br>离店 {{ order.check_out|date:"Y-m-d" }}</div>
+    <div class="text-end">
+      <div class="small text-muted">应付</div>
+      <div class="fs-3 fw-bold">¥{{ order.amount }}</div>
+      <div class="small text-muted">已收 ¥{{ paid }}</div>
+    </div>
+  </div>
+  <p class="small text-muted mt-4 mb-0">本收据由系统根据订单生成，可与支付流水对照。入住前取消按门店规则退款。</p>
+  <p class="no-print mt-3 mb-0"><a href="{{ order.get_absolute_url }}">返回订单</a></p>
+</article>
+{% endblock %}

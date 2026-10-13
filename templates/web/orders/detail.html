@@ -12,6 +12,7 @@
   <div class="d-flex gap-2">
     {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>{% if order.payment_status == 'partial' %}补差价{% else %}去支付{% endif %} ¥{{ balance_due }}</a>{% endif %}
     {% if order.can_review %}<a class="btn btn-primary" href="{% url 'web:order_review' order.order_no %}"><i class="bi bi-star me-1"></i>评价本次服务</a>{% endif %}
+    <a class="btn btn-light" href="{% url 'web:order_receipt' order.order_no %}"><i class="bi bi-printer me-1"></i>收据</a>
     {% if order.can_reschedule %}<a class="btn btn-light" href="{% url 'web:order_reschedule' order.order_no %}"><i class="bi bi-calendar2-range me-1"></i>改期 / 换房</a>{% endif %}
     {% if order.can_cancel %}<button class="btn btn-light text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">取消预约</button>{% endif %}
   </div>
