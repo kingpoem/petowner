@@ -5,7 +5,12 @@ from django.views.decorators.http import require_POST
 from apps.web.views import owner_required
 
 from .forms import MedicationForm, VaccineForm, WaitlistForm
+from .house import house_board
 from .models import AddonService, Coupon, Medication, StoreNotice, WaitlistEntry, ensure_member
+
+
+def house(request):
+    return render(request, "hospitality/house.html", {"board": house_board()})
 
 
 def service_menu(request):
