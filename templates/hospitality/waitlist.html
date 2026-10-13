@@ -1,0 +1,44 @@
+{% extends "web/me_base.html" %}
+
+{% block title %}满房候补{% endblock %}
+
+{% block main %}
+<div class="d-flex justify-content-between align-items-end mb-4 gap-3">
+  <div>
+    <h1 class="h3 mb-1">满房候补</h1>
+    <p class="text-muted mb-0">心仪日期没有空房时先排队。前台按提交顺序通知，不会自动扣款。</p>
+  </div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="ps-card p-4">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger small">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+        {% include "web/_field.html" with field=form.pet %}
+        {% include "web/_field.html" with field=form.room_type %}
+        {% include "web/_field.html" with field=form.check_in %}
+        {% include "web/_field.html" with field=form.check_out %}
+        {% include "web/_field.html" with field=form.note %}
+        <button class="btn btn-primary">加入候补</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="ps-card p-4">
+      <h5 class="mb-3">我的排队</h5>
+      {% for entry in entries %}
+      <div class="d-flex justify-content-between gap-3 py-3 border-bottom">
+        <div>
+          <div class="fw-semibold">{{ entry.pet.name }} · {{ entry.check_in|date:"n月j日" }} 至 {{ entry.check_out|date:"n月j日" }}</div>
+          <div class="small text-muted">{{ entry.get_room_type_display }}{% if entry.note %} · {{ entry.note }}{% endif %}</div>
+        </div>
+        <span class="badge rounded-pill text-bg-light border align-self-start">{{ entry.get_status_display }}</span>
+      </div>
+      {% empty %}
+      <p class="text-muted small mb-0">还没有候补。直接预约通常更快，候补适合热门假期。</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
