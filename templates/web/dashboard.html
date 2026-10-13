@@ -1,0 +1,110 @@
+{% extends "web/me_base.html" %}
+{% load static web_tags %}
+
+{% block title %}个人中心{% endblock %}
+
+{% block main %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+  <div>
+    <h1 class="h3 mb-1">你好，{{ request.owner.name }}</h1>
+    <p class="text-muted mb-0">在这里管理预约、查看毛孩子的护理动态</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{% url 'web:booking_create' %}"><i class="bi bi-plus-lg me-1"></i>新建预约</a>
+  </div>
+</div>
+
+{% for pet in vaccine_warnings %}
+  <div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div class="flex-grow-1">{{ pet.name }} 的疫苗{% if pet.vaccine_expiry %}将于 {{ pet.vaccine_expiry|date:"Y-m-d" }} 到期{% else %}尚未登记{% endif %}，到期后将无法预约寄养。</div>
+    <a class="btn btn-sm btn-warning" href="{% url 'web:pet_edit' pet.pk %}">去更新</a>
+  </div>
+{% endfor %}
+
+{% if membership %}
+<div class="loyalty-hero mb-4">
+  <img class="loyalty-hero-img" src="{% static 'img/stock/member-pet.jpg' %}" alt="">
+  <div>
+    <div class="eyebrow">会员</div>
+    <div class="fw-bold fs-5">{{ membership.tier_name }} · {{ membership.points }} 积分</div>
+    <div class="small opacity-75 mb-2">房费 {{ membership.discount_label }} · 累计 {{ membership.lifetime_points }}</div>
+    <div class="loyalty-progress mb-2"><span style="width: {{ membership.progress_percent }}%"></span></div>
+    <a class="small text-white" href="{% url 'hospitality:membership' %}">打开会员中心</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="ps-card p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">进行中的寄养</h5>
+    <a class="small" href="{% url 'web:order_list' %}">全部订单</a>
+  </div>
+  {% for order in active_orders %}
+    <a href="{{ order.get_absolute_url }}" class="d-flex align-items-center gap-3 p-3 rounded-4 text-decoration-none text-body hover-lift mb-2" style="background: var(--ps-bg);">
+      <img class="avatar-lg" src="{% image_url order.pet size=160 %}" alt="{{ order.pet.name }}">
+      <div class="flex-grow-1">
+        <div class="fw-bold">{{ order.pet.name }} · {{ order.room.display_name }}</div>
+        <div class="small text-muted">{{ order.check_in|date:"n月j日" }} - {{ order.check_out|date:"n月j日" }}（{{ order.days }} 晚）· 订单 {{ order.order_no }}</div>
+      </div>
+      <div class="text-end">
+        <span class="badge rounded-pill text-bg-{{ order.status|badge }}">{{ order.get_status_display }}</span>
+        {% if order.can_pay %}<div><span class="badge rounded-pill text-bg-warning mt-1">{% if order.payment_status == 'partial' %}待补差价{% else %}待支付{% endif %} ¥{{ order.balance_due }}</span></div>{% endif %}
+      </div>
+    </a>
+  {% empty %}
+    <div class="empty-state py-4"><i class="bi bi-calendar2-heart"></i><p class="mt-2 mb-3">暂无进行中的寄养</p><a class="btn btn-outline-primary btn-sm" href="{% url 'web:room_list' %}">去看看房间</a></div>
+  {% endfor %}
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="ps-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">我的宠物</h5>
+        <a class="small" href="{% url 'web:pet_create' %}"><i class="bi bi-plus"></i>添加</a>
+      </div>
+      {% for pet in pets %}
+        <a class="d-flex align-items-center gap-3 mb-3 text-decoration-none text-body" href="{% url 'web:pet_edit' pet.pk %}">
+          <img class="avatar" src="{% image_url pet size=160 %}" alt="{{ pet.name }}">
+          <div><div class="fw-semibold">{{ pet.name }}</div><div class="small text-muted">{{ pet.breed }} · {{ pet.age }} 岁 · {{ pet.weight }}kg</div></div>
+        </a>
+      {% empty %}
+        <p class="text-muted small">还没有宠物档案，<a href="{% url 'web:pet_create' %}">现在添加</a></p>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="ps-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">最新消息</h5>
+        <a class="small" href="{% url 'web:notifications' %}">全部</a>
+      </div>
+      {% for note in notifications %}
+        <a class="d-block mb-3 text-decoration-none text-body" href="{% url 'web:notification_open' note.pk %}">
+          <div class="fw-semibold small"><span class="badge text-bg-{{ note.level }} me-1">&nbsp;</span>{{ note.title }}</div>
+          <div class="small text-muted text-truncate">{{ note.body }}</div>
+        </a>
+      {% empty %}
+        <p class="text-muted small">没有未读消息</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% if to_review %}
+<div class="row g-4 mt-0">
+  <div class="col-md-6">
+    <div class="ps-card p-4 h-100">
+      <h5 class="mb-3">待评价</h5>
+      {% for order in to_review %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="small">{{ order.pet.name }} · {{ order.check_out|date:"n月j日" }} 离店</span>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'web:order_review' order.order_no %}">去评价</a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

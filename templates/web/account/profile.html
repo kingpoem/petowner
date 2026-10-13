@@ -1,0 +1,33 @@
+{% extends "web/me_base.html" %}
+
+{% block title %}账号设置{% endblock %}
+
+{% block main %}
+<div class="ps-card p-4 mb-4">
+  <h4 class="mb-4">个人资料</h4>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="row">
+      <div class="col-md-6">{% include "web/_field.html" with field=form.name %}</div>
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">手机号（登录账号）</label>
+          <input class="form-control" value="{{ request.owner.phone }}" disabled>
+        </div>
+      </div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.email %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.address %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.emergency_contact %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.emergency_phone %}</div>
+    </div>
+    <button class="btn btn-primary">保存</button>
+  </form>
+</div>
+<div class="ps-card p-4 d-flex justify-content-between align-items-center">
+  <div>
+    <h5 class="mb-1">登录密码</h5>
+    <p class="text-muted small mb-0">定期修改密码可以提升账号安全</p>
+  </div>
+  <a class="btn btn-outline-primary" href="{% url 'web:password_change' %}">修改密码</a>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}注册{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="auth-wrap ps-card p-4 p-md-5">
+    <div class="text-center mb-4">
+      <span class="brand-mark mx-auto mb-3" style="width:56px;height:56px;font-size:1.6rem;"><i class="bi bi-heart-fill"></i></span>
+      <h1 class="h3">创建账号</h1>
+      <p class="text-muted small">一分钟注册，在线预约寄养</p>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "web/_field.html" with field=form.name %}
+      {% include "web/_field.html" with field=form.phone %}
+      {% include "web/account/_sms_block.html" with purpose="register" %}
+      {% include "web/_field.html" with field=form.email %}
+      <div class="row">
+        <div class="col-6">{% include "web/_field.html" with field=form.password1 %}</div>
+        <div class="col-6">{% include "web/_field.html" with field=form.password2 %}</div>
+      </div>
+      <div class="mb-3">
+        <div class="form-check small">
+          {{ form.agree }}
+          <label class="form-check-label" for="{{ form.agree.id_for_label }}">我已阅读并同意<a href="{% url 'web:page' 'terms' %}" target="_blank">《服务协议》</a>和<a href="{% url 'web:page' 'privacy' %}" target="_blank">《隐私政策》</a></label>
+        </div>
+        {% for error in form.agree.errors %}<div class="text-danger small">请先同意服务协议和隐私政策</div>{% endfor %}
+      </div>
+      <button class="btn btn-primary btn-lg w-100">注册</button>
+    </form>
+    <p class="text-center small text-muted mt-4 mb-0">已有账号？<a href="{% url 'web:login' %}">去登录</a></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{% static 'js/verify.js' %}"></script>{% endblock %}

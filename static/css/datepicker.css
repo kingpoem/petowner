@@ -1,0 +1,192 @@
+/* 中文日期选择器（前台与后台共用），配色优先取前台主题变量，其次取 Django admin 变量 */
+.dp,
+.dp-input {
+  --dp-bg: var(--ps-card, var(--body-bg, #fff));
+  --dp-ink: var(--ps-ink, var(--body-fg, #1f2a44));
+  --dp-muted: var(--ps-muted, var(--body-quiet-color, #6b7280));
+  --dp-border: var(--ps-border, var(--hairline-color, #f0e6de));
+  --dp-accent: var(--ps-primary, #f2703f);
+  --dp-accent-dark: var(--ps-primary-dark, #d85a2b);
+  --dp-soft: var(--ps-primary-soft, rgba(242, 112, 63, 0.14));
+}
+
+.dp-input {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.25rem !important;
+}
+
+.dp {
+  position: absolute;
+  z-index: 1085;
+  width: 300px;
+  padding: 12px;
+  background: var(--dp-bg);
+  color: var(--dp-ink);
+  border: 1px solid var(--dp-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(31, 42, 68, 0.14);
+  font-size: 14px;
+  line-height: 1.4;
+  animation: dp-in 0.12s ease-out;
+}
+
+@keyframes dp-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.dp button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dp-head strong {
+  font-size: 15px;
+}
+
+.dp-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dp-ink);
+}
+
+.dp-nav:hover:not(:disabled) {
+  background: var(--dp-soft);
+}
+
+.dp-nav:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+
+.dp-wd {
+  text-align: center;
+  font-size: 12px;
+  color: var(--dp-muted);
+  padding: 4px 0;
+}
+
+.dp-wd.weekend {
+  color: var(--dp-accent-dark);
+}
+
+.dp-day {
+  position: relative;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dp-ink);
+  border-radius: 10px;
+}
+
+.dp-day.other {
+  color: #b8bec9;
+}
+
+.dp-day:hover:not(:disabled) {
+  background: var(--dp-soft);
+}
+
+.dp-day:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: -2px;
+}
+
+.dp-day.today::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--dp-accent);
+}
+
+.dp-day.in-range {
+  background: var(--dp-soft);
+  border-radius: 0;
+}
+
+.dp-day.selected,
+.dp-day.range-start,
+.dp-day.range-end {
+  background: var(--dp-accent) !important;
+  color: #fff;
+  font-weight: 600;
+}
+
+.dp-day.selected::after,
+.dp-day.range-start::after,
+.dp-day.range-end::after {
+  background: #fff;
+}
+
+.dp-day:disabled {
+  cursor: not-allowed;
+}
+
+.dp-day:disabled:not(.range-start) {
+  color: #d3d7de;
+  text-decoration: line-through;
+}
+
+.dp-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dp-border);
+  font-size: 13px;
+}
+
+.dp-hint {
+  flex: 1;
+  color: var(--dp-muted);
+}
+
+.dp-hint b {
+  color: var(--dp-accent-dark);
+}
+
+.dp-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--dp-accent-dark);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp {
+    animation: none;
+  }
+}

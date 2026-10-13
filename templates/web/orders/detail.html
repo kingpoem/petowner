@@ -1,0 +1,132 @@
+{% extends "web/me_base.html" %}
+{% load web_tags %}
+
+{% block title %}订单 {{ order.order_no }}{% endblock %}
+
+{% block main %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <a href="{% url 'web:order_list' %}" class="small text-muted"><i class="bi bi-chevron-left"></i>我的订单</a>
+    <h1 class="h3 mb-0 mt-1">订单 {{ order.order_no }}</h1>
+  </div>
+  <div class="d-flex gap-2">
+    {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>{% if order.payment_status == 'partial' %}补差价{% else %}去支付{% endif %} ¥{{ balance_due }}</a>{% endif %}
+    {% if order.can_review %}<a class="btn btn-primary" href="{% url 'web:order_review' order.order_no %}"><i class="bi bi-star me-1"></i>评价本次服务</a>{% endif %}
+    {% if order.can_reschedule %}<a class="btn btn-light" href="{% url 'web:order_reschedule' order.order_no %}"><i class="bi bi-calendar2-range me-1"></i>改期 / 换房</a>{% endif %}
+    {% if order.can_cancel %}<button class="btn btn-light text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">取消预约</button>{% endif %}
+  </div>
+</div>
+
+<div class="ps-card p-4 mb-4">
+  <div class="steps">
+    {% for label, time, done in steps %}
+      <div class="step {% if done %}done{% endif %}">
+        <div class="dot"><i class="bi {% if done %}bi-check-lg{% else %}bi-circle{% endif %}"></i></div>
+        <div>{{ label }}</div>
+        <div class="small text-muted label-time">{% if done and time %}{{ time|date:"m-d H:i" }}{% else %}&nbsp;{% endif %}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-7">
+    <div class="ps-card p-4 h-100">
+      <h5 class="mb-4">护理动态 <span class="text-muted small fw-normal">（{{ records|length }} 条）</span></h5>
+      {% if records %}
+        <div class="timeline">
+          {% for record in records %}
+            <div class="timeline-item {% if record.needs_attention %}alert-item{% endif %}">
+              <div class="d-flex flex-wrap justify-content-between gap-2">
+                <span class="fw-semibold">{{ record.feeding_time|date:"n月j日 H:i" }}</span>
+                <span>
+                  <span class="badge rounded-pill text-bg-secondary">{{ record.code }}</span>
+                  <span class="badge rounded-pill text-bg-{% if record.needs_attention %}danger{% else %}success{% endif %}">健康：{{ record.health_status }}</span>
+                  {% if record.appetite %}<span class="badge rounded-pill text-bg-light border">{{ record.appetite }}</span>{% endif %}
+                </span>
+              </div>
+              <p class="mb-1 mt-1">{{ record.care_content }}</p>
+              {% if record.health_note %}<p class="small mb-1 {% if record.needs_attention %}text-danger{% else %}text-warning-emphasis{% endif %}"><i class="bi {% if record.needs_attention %}bi-exclamation-circle{% else %}bi-info-circle{% endif %} me-1"></i>{{ record.health_note }}</p>{% endif %}
+              {% if record.photo %}<a href="{{ record.photo.url }}" data-lightbox="care" data-caption="{{ record.feeding_time|date:'n月j日 H:i' }} · {{ record.care_content|truncatechars:40 }}" aria-label="查看护理照片大图"><img class="timeline-photo mt-2" src="{% thumb record.photo 480 %}" alt="护理照片" loading="lazy"></a>{% endif %}
+              <div class="small text-muted mt-1">护理师 {{ record.staff }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state py-4"><i class="bi bi-journal-heart"></i><p class="mt-2 mb-0">{% if order.status == 'pending' %}入住后，护理师的每一条记录都会出现在这里{% else %}暂无护理记录{% endif %}</p></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="ps-card p-4 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <img class="avatar-lg" src="{% image_url order.pet size=160 %}" alt="{{ order.pet.name }}">
+        <div>
+          <div class="fw-bold fs-5">{{ order.pet.name }}</div>
+          <div class="small text-muted">{{ order.pet.breed|default:order.pet.get_species_display }}{% if order.pet.age %} · {{ order.pet.age }} 岁{% endif %} · {{ order.pet.weight|floatformat:"-1" }}kg</div>
+        </div>
+      </div>
+      <dl class="row small mb-0">
+        <dt class="col-4 text-muted fw-normal">房间</dt><dd class="col-8"><a href="{% url 'web:room_detail' order.room.pk %}">{{ order.room.display_name }}</a></dd>
+        <dt class="col-4 text-muted fw-normal">入住</dt><dd class="col-8">{{ order.check_in|date:"Y-m-d D" }}</dd>
+        <dt class="col-4 text-muted fw-normal">离店</dt><dd class="col-8">{{ order.check_out|date:"Y-m-d D" }}（{{ order.days }} 晚）</dd>
+        <dt class="col-4 text-muted fw-normal">订单状态</dt><dd class="col-8"><span class="badge rounded-pill text-bg-{{ order.status|badge }}">{{ order.get_status_display }}</span></dd>
+        <dt class="col-4 text-muted fw-normal">支付状态</dt><dd class="col-8"><span class="badge rounded-pill text-bg-{{ order.payment_status|badge }}">{{ order.get_payment_status_display }}</span></dd>
+        {% for line in order.addons.all %}
+          <dt class="col-4 text-muted fw-normal">{{ line.service.name }}</dt><dd class="col-8">¥{{ line.line_total }}</dd>
+        {% endfor %}
+        {% if order.discount %}<dt class="col-4 text-muted fw-normal">优惠</dt><dd class="col-8 text-success">-¥{{ order.discount }}</dd>{% endif %}
+        {% if order.status == 'cancelled' %}
+          {% if order.cancel_fee %}<dt class="col-4 text-muted fw-normal">违约金</dt><dd class="col-8 fw-bold">¥{{ order.cancel_fee }}</dd>{% endif %}
+        {% else %}
+          <dt class="col-4 text-muted fw-normal">订单金额</dt><dd class="col-8 fw-bold text-primary">¥{{ order.amount }}</dd>
+        {% endif %}
+        {% if paid %}<dt class="col-4 text-muted fw-normal">已付金额</dt><dd class="col-8">¥{{ paid }}</dd>{% endif %}
+        {% if order.can_pay and paid %}<dt class="col-4 text-muted fw-normal">待补差价</dt><dd class="col-8 text-warning-emphasis fw-semibold">¥{{ balance_due }}</dd>{% endif %}
+        {% if order.note %}<dt class="col-4 text-muted fw-normal">留言</dt><dd class="col-8">{{ order.note }}</dd>{% endif %}
+        {% if order.cancel_reason %}<dt class="col-4 text-muted fw-normal">取消原因</dt><dd class="col-8">{{ order.cancel_reason }}</dd>{% endif %}
+      </dl>
+    </div>
+    {% if payments %}
+    <div class="ps-card p-4 mb-4">
+      <h6 class="mb-3">收退款记录</h6>
+      {% for p in payments %}
+        <div class="d-flex justify-content-between small mb-2">
+          <span>{{ p.get_kind_display }} · {{ p.get_method_display }}<br><span class="text-muted">{{ p.transaction_no }}</span></span>
+          <span class="{% if p.kind == 'refund' %}text-success{% endif %}">{% if p.kind == 'refund' %}-{% endif %}¥{{ p.amount }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if order.review %}
+    <div class="ps-card p-4">
+      <h6 class="mb-2">我的评价</h6>
+      <div class="stars">{% for _ in order.review.rating|stars %}★{% endfor %}</div>
+      <p class="small mb-0 mt-1">{{ order.review.content }}</p>
+      {% if order.review.reply %}<p class="small text-muted mt-2 mb-0 border-top pt-2">门店回复：{{ order.review.reply }}</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if order.can_cancel %}
+<div class="modal fade" id="cancelModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content border-0" method="post" action="{% url 'web:order_cancel' order.order_no %}">
+      {% csrf_token %}
+      <div class="modal-header border-0"><h5 class="modal-title">确认取消预约？</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        {% if cancel_fee %}
+          <div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i>已到入住日，取消将扣除首晚房费 <strong>¥{{ cancel_fee }}</strong>{% if cancel_refund > 0 %}，其余 ¥{{ cancel_refund }} 原路退回{% endif %}。</div>
+        {% elif paid %}
+          <p class="small text-muted">入住日前取消免收费用，已支付的 ¥{{ paid }} 将全额原路退回。</p>
+        {% endif %}
+        {% if order.can_reschedule %}<p class="small mb-3">只是时间有变？<a href="{% url 'web:order_reschedule' order.order_no %}">改期或换房</a>可保留订单，差价自动多退少补。</p>{% endif %}
+        {% include "web/_field.html" with field=cancel_form.reason %}
+      </div>
+      <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">再想想</button><button class="btn btn-danger">确认取消</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,138 @@
+{% load static %}<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ SITE.name }} · {{ SITE.slogan }}。在线预约寄养房间，实时查看喂养与护理动态。">
+  <meta name="theme-color" content="#f2703f">
+  <title>{% block title %}{{ SITE.slogan }}{% endblock %} | {{ SITE.name }}</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  <link rel="stylesheet" href="{% static 'css/datepicker.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% with url_name=request.resolver_match.url_name %}
+  <nav class="navbar navbar-expand-lg site-nav sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center" href="{% url 'web:home' %}">
+        <span class="brand-mark"><i class="bi bi-heart-fill"></i></span>{{ SITE.name }}
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-label="展开导航">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav mx-auto gap-lg-1">
+          <li class="nav-item"><a class="nav-link {% if url_name == 'home' %}active{% endif %}" href="{% url 'web:home' %}">首页</a></li>
+          <li class="nav-item"><a class="nav-link {% if url_name == 'room_list' or url_name == 'room_detail' %}active{% endif %}" href="{% url 'web:room_list' %}">寄养房间</a></li>
+          <li class="nav-item"><a class="nav-link {% if request.resolver_match.namespace == 'hospitality' and url_name == 'services' %}active{% endif %}" href="{% url 'hospitality:services' %}">增值服务</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#services">护理服务</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#faq">常见问题</a></li>
+        </ul>
+        <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+          {% if user.is_authenticated %}
+            {% if user.is_staff %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:index' %}"><i class="bi bi-speedometer2 me-1"></i>运营后台</a>
+            {% endif %}
+            {% if user.owner_profile %}
+              <a class="btn btn-sm btn-light position-relative rounded-circle px-2" href="{% url 'web:notifications' %}" aria-label="消息通知">
+                <i class="bi bi-bell fs-5"></i>
+                {% if unread_notifications %}<span class="badge rounded-pill text-bg-danger notif-dot">{{ unread_notifications }}</span>{% endif %}
+              </a>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                  <i class="bi bi-person-circle me-1"></i>{{ user.owner_profile.name }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                  <li><a class="dropdown-item" href="{% url 'web:dashboard' %}"><i class="bi bi-grid me-2"></i>个人中心</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:order_list' %}"><i class="bi bi-receipt me-2"></i>我的订单</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:pet_list' %}"><i class="bi bi-heart me-2"></i>我的宠物</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:profile' %}"><i class="bi bi-gear me-2"></i>账号设置</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <form method="post" action="{% url 'web:logout' %}">{% csrf_token %}
+                      <button class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>退出登录</button>
+                    </form>
+                  </li>
+                </ul>
+              </div>
+              <a class="btn btn-primary btn-sm" href="{% url 'web:booking_create' %}">立即预约</a>
+            {% else %}
+              <form method="post" action="{% url 'web:logout' %}">{% csrf_token %}<button class="btn btn-sm btn-light">退出</button></form>
+            {% endif %}
+          {% else %}
+            <a class="btn btn-sm btn-light" href="{% url 'web:login' %}">登录</a>
+            <a class="btn btn-primary btn-sm" href="{% url 'web:register' %}">注册预约</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+  {% endwith %}
+
+  {% if messages %}
+  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080; margin-top: 64px;">
+    {% for message in messages %}
+    <div class="toast align-items-center border-0 shadow text-bg-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %}" role="alert" data-bs-delay="5000">
+      <div class="d-flex">
+        <div class="toast-body">{{ message }}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="关闭"></button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="d-flex align-items-center mb-3 text-white fs-5 fw-bold">
+            <span class="brand-mark"><i class="bi bi-heart-fill"></i></span>{{ SITE.name }}
+          </div>
+          <p class="small mb-0">{{ SITE.slogan }}。专业护理团队、全天候看护、每日护理动态推送，让每一次分别都安心。</p>
+        </div>
+        <div class="col-6 col-lg-2">
+          <h6>服务</h6>
+          <ul class="list-unstyled small d-grid gap-2">
+            <li><a href="{% url 'web:room_list' %}">寄养房间</a></li>
+            <li><a href="{% url 'hospitality:services' %}">增值服务</a></li>
+            <li><a href="{% url 'web:booking_create' %}">在线预约</a></li>
+            <li><a href="{% url 'web:home' %}#faq">常见问题</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-lg-2">
+          <h6>关于</h6>
+          <ul class="list-unstyled small d-grid gap-2">
+            <li><a href="{% url 'web:page' 'terms' %}">服务协议</a></li>
+            <li><a href="{% url 'web:page' 'privacy' %}">隐私政策</a></li>
+            <li><a href="{% url 'web:page' 'credits' %}">图片来源</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-4">
+          <h6>联系我们</h6>
+          <ul class="list-unstyled small d-grid gap-2">
+            <li><i class="bi bi-telephone me-2"></i>{{ SITE.phone }}</li>
+            <li><i class="bi bi-geo-alt me-2"></i>{{ SITE.address }}</li>
+            <li><i class="bi bi-clock me-2"></i>{{ SITE.hours }}</li>
+          </ul>
+        </div>
+      </div>
+      <hr class="border-secondary my-4">
+      <div class="d-flex flex-wrap justify-content-between small gap-2">
+        <span>© {% now "Y" %} {{ SITE.name }}. 保留所有权利。</span>
+        {% if SITE.icp %}<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">{{ SITE.icp }}</a>{% endif %}
+      </div>
+    </div>
+  </footer>
+
+  <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/datepicker.js' %}"></script>
+  <script src="{% static 'js/site.js' %}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

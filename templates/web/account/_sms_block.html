@@ -1,0 +1,18 @@
+<div data-sms-block data-sms-url="{% url 'security:send_sms' %}" data-purpose="{{ purpose }}" data-phone-input="#{{ form.phone.id_for_label }}">
+  <div class="mb-3">
+    <label class="form-label fw-semibold small" for="id_sms_captcha">图形验证码 <span class="text-danger">*</span></label>
+    <div class="input-group">
+      <input id="id_sms_captcha" class="form-control" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="输入右侧字符，获取短信前填写" data-captcha-input>
+      {% include "web/account/_captcha_img.html" %}
+    </div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label fw-semibold small" for="{{ form.sms_code.id_for_label }}">{{ form.sms_code.label }} <span class="text-danger">*</span></label>
+    <div class="input-group">
+      {{ form.sms_code }}
+      <button type="button" class="btn btn-outline-primary sms-send-btn" data-sms-send>获取验证码</button>
+    </div>
+    <div class="small mt-1" data-sms-status aria-live="polite"></div>
+    {% for error in form.sms_code.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+  </div>
+</div>

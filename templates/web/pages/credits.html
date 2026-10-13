@@ -1,0 +1,23 @@
+{% extends "web/pages/_page.html" %}
+{% load static %}
+{% block title %}图片来源{% endblock %}
+{% block page_title %}图片来源{% endblock %}
+{% block page_meta %}本站展示图片来自 Wikimedia Commons，均依据其开放许可证使用{% endblock %}
+{% block page_body %}
+<div class="row g-3">
+  {% for slot, c in credits.items %}
+  <div class="col-md-6">
+    <div class="d-flex gap-3 align-items-start">
+      <img src="{% static 'img/stock/' %}{{ slot }}.jpg" alt="{{ c.title }}" style="width:96px;height:64px;object-fit:cover;border-radius:10px;" loading="lazy">
+      <div class="small lh-sm">
+        <a href="{{ c.source }}" target="_blank" rel="noopener" class="fw-semibold">{{ c.title|truncatechars:48 }}</a>
+        <div class="text-muted mt-1">作者：{{ c.author|truncatechars:60 }}</div>
+        <div class="text-muted">许可：{% if c.license_url %}<a href="{{ c.license_url }}" target="_blank" rel="noopener">{{ c.license }}</a>{% else %}{{ c.license }}{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-muted">暂无第三方图片。</p>
+  {% endfor %}
+</div>
+{% endblock %}

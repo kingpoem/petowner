@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}登录{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="auth-wrap ps-card p-4 p-md-5">
+    <div class="text-center mb-4">
+      <span class="brand-mark mx-auto mb-3" style="width:56px;height:56px;font-size:1.6rem;"><i class="bi bi-heart-fill"></i></span>
+      <h1 class="h3">欢迎回来</h1>
+      <p class="text-muted small">登录后查看订单与毛孩子的护理动态</p>
+    </div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {% for error in form.non_field_errors %}<div class="alert alert-danger small py-2">{{ error }}</div>{% endfor %}
+      {% include "web/_field.html" with field=form.username %}
+      {% include "web/_field.html" with field=form.password %}
+      {% if form.captcha_required %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold small" for="{{ form.captcha.id_for_label }}">图形验证码 <span class="text-danger">*</span></label>
+          <div class="input-group">{{ form.captcha }}{% include "web/account/_captcha_img.html" %}</div>
+          <div class="form-text">多次登录失败，请输入验证码以继续</div>
+        </div>
+      {% endif %}
+      <div class="text-end small mb-2" style="margin-top:-.5rem;"><a href="{% url 'web:password_reset_sms' %}">忘记密码？</a></div>
+      <button class="btn btn-primary btn-lg w-100 mt-2">登录</button>
+    </form>
+    <p class="text-center small text-muted mt-4 mb-0">还没有账号？<a href="{% url 'web:register' %}">立即注册</a></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}{% if form.captcha_required %}<script src="{% static 'js/verify.js' %}"></script>{% endif %}{% endblock %}
