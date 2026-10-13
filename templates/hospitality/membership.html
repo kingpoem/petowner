@@ -4,8 +4,9 @@
 {% block title %}会员中心{% endblock %}
 
 {% block main %}
-<div class="loyalty-hero mb-4">
+<div class="loyalty-hero has-ring mb-4">
   <img class="loyalty-hero-img" src="{% static 'img/stock/member-pet.jpg' %}" alt="会员宠物">
+  <div class="tier-ring" style="--p: {{ account.progress_percent }}"><span>{{ account.progress_percent }}%</span></div>
   <div>
     <div class="eyebrow">Paw Club</div>
     <h1 class="h3 mb-1">{{ account.tier_name }}会员</h1>

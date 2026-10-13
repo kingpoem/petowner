@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  <link rel="stylesheet" href="{% static 'css/atelier.css' %}">
   <link rel="stylesheet" href="{% static 'css/datepicker.css' %}">
   {% block head %}{% endblock %}
 </head>
@@ -28,6 +29,7 @@
           <li class="nav-item"><a class="nav-link {% if url_name == 'home' %}active{% endif %}" href="{% url 'web:home' %}">首页</a></li>
           <li class="nav-item"><a class="nav-link {% if url_name == 'room_list' or url_name == 'room_detail' %}active{% endif %}" href="{% url 'web:room_list' %}">寄养房间</a></li>
           <li class="nav-item"><a class="nav-link {% if request.resolver_match.namespace == 'hospitality' and url_name == 'services' %}active{% endif %}" href="{% url 'hospitality:services' %}">增值服务</a></li>
+          <li class="nav-item"><a class="nav-link {% if url_name == 'house' %}active{% endif %}" href="{% url 'hospitality:house' %}">今日在店</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#services">护理服务</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#faq">常见问题</a></li>
         </ul>
@@ -101,6 +103,7 @@
           <ul class="list-unstyled small d-grid gap-2">
             <li><a href="{% url 'web:room_list' %}">寄养房间</a></li>
             <li><a href="{% url 'hospitality:services' %}">增值服务</a></li>
+            <li><a href="{% url 'hospitality:house' %}">今日在店</a></li>
             <li><a href="{% url 'web:booking_create' %}">在线预约</a></li>
             <li><a href="{% url 'web:home' %}#faq">常见问题</a></li>
           </ul>

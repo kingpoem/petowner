@@ -20,6 +20,7 @@ from django.views.decorators.http import require_POST
 
 from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
+from apps.hospitality.house import house_board
 from apps.hospitality.models import StoreNotice
 from apps.hospitality.services import ensure_member, preview_reschedule, price_booking
 from apps.notifications.models import Notification
@@ -90,6 +91,7 @@ def home(request):
         "review_count": rating["total"],
         "search_form": SearchForm(initial={"check_in": tomorrow, "check_out": tomorrow + timedelta(days=3)}),
         "notices": StoreNotice.published()[:3],
+        "board": house_board(),
     }
     return render(request, "web/home.html", context)
 
@@ -364,6 +366,21 @@ def order_detail(request, order_no):
         fee = order.cancellation_fee()
         context.update(cancel_fee=fee, cancel_refund=paid - fee)
     return render(request, "web/orders/detail.html", context)
+
+
+@owner_required
+def order_receipt(request, order_no):
+    order = _owner_order(request, order_no)
+    return render(
+        request,
+        "web/orders/receipt.html",
+        {
+            "order": order,
+            "stay_quote": quote(order.room, order.check_in, order.check_out),
+            "addons": order.addons.select_related("service"),
+            "paid": order.net_paid,
+        },
+    )
 
 
 @owner_required

@@ -1,0 +1,272 @@
+/* 店面气质：衬线标题、纸感背景、住客看板。不改组件结构，盖在 site.css 之上。 */
+
+:root {
+  --ps-display: "Iowan Old Style", "Palatino Linotype", "Songti SC", "STSong", "Noto Serif SC", serif;
+  --ps-pine: #1e3a32;
+  --ps-paper: #f7f1e8;
+}
+
+body {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(242, 112, 63, 0.14), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(42, 157, 143, 0.12), transparent 50%),
+    var(--ps-paper);
+}
+
+h1,
+h2,
+.page-header h1,
+.loyalty-hero h1 {
+  font-family: var(--ps-display);
+  letter-spacing: -0.03em;
+}
+
+.site-nav {
+  background: rgba(247, 241, 232, 0.82);
+}
+
+.brand-mark {
+  border-radius: 40% 60% 55% 45%;
+}
+
+.hero {
+  border-radius: 0 0 48px 48px;
+  box-shadow: 0 30px 60px rgba(31, 42, 68, 0.12);
+}
+
+.ps-card,
+.search-card {
+  border: 1px solid rgba(31, 42, 68, 0.05);
+}
+
+.ps-card.hover-lift img,
+.cover img {
+  transition: transform 0.6s ease;
+}
+
+.ps-card.hover-lift:hover img,
+.cover:hover img {
+  transform: scale(1.04);
+}
+
+.cover {
+  overflow: hidden;
+}
+
+.house-hero {
+  position: relative;
+  padding: 4.5rem 0 3rem;
+  color: #f6f1ea;
+  background:
+    linear-gradient(120deg, rgba(18, 32, 28, 0.78), rgba(31, 42, 68, 0.35)),
+    url("../img/stock/ambient-suite.jpg") center/cover;
+  border-radius: 0 0 40px 40px;
+}
+
+.house-hero h1 {
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  line-height: 1.05;
+  max-width: 12ch;
+}
+
+.occupancy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem 1.25rem;
+  align-items: center;
+  margin-top: 1.75rem;
+  max-width: 420px;
+}
+
+.occupancy strong {
+  font-family: var(--ps-display);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.occupancy-track {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  grid-column: 1 / -1;
+}
+
+.occupancy-track span {
+  display: block;
+  height: 100%;
+  width: var(--rate, 0%);
+  background: linear-gradient(90deg, #f9a26c, #fff);
+}
+
+.house-teaser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ps-ink);
+  box-shadow: var(--ps-shadow);
+}
+
+.house-teaser:hover {
+  color: var(--ps-primary-dark);
+}
+
+.pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2a9d8f;
+  box-shadow: 0 0 0 0 rgba(42, 157, 143, 0.6);
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 10px rgba(42, 157, 143, 0);
+  }
+}
+
+.guest-card {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.guest-card img {
+  width: 92px;
+  height: 112px;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.guest-card .note {
+  color: var(--ps-muted);
+  font-size: 0.92rem;
+}
+
+.guest-card.alert {
+  outline: 1px solid #f5c16c;
+}
+
+.lane {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: var(--ps-radius);
+  padding: 1.25rem;
+}
+
+.rhythm {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.95rem;
+}
+
+.rhythm time {
+  font-variant-numeric: tabular-nums;
+  color: var(--ps-primary-dark);
+  font-weight: 700;
+}
+
+.loyalty-hero.has-ring {
+  grid-template-columns: 110px 92px 1fr;
+}
+
+.tier-ring {
+  --p: 0;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(#fff calc(var(--p) * 1%), rgba(255, 255, 255, 0.25) 0);
+  flex: none;
+}
+
+.tier-ring span {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #d85a2b;
+  font-weight: 700;
+}
+
+.receipt-sheet {
+  max-width: 720px;
+  margin: 2rem auto 4rem;
+  background: #fff;
+  padding: 2.5rem 2.25rem;
+  border-radius: 8px;
+  box-shadow: var(--ps-shadow);
+}
+
+.receipt-sheet h1 {
+  font-size: 2rem;
+}
+
+.receipt-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--ps-border);
+  border-bottom: 1px solid var(--ps-border);
+  padding: 0.8rem 0;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.92rem;
+}
+
+.receipt-sheet table {
+  width: 100%;
+}
+
+.receipt-sheet td {
+  padding: 0.45rem 0;
+  vertical-align: top;
+}
+
+.receipt-sheet td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lost {
+  min-height: 68vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.lost h1 {
+  font-size: clamp(4rem, 12vw, 8rem);
+  line-height: 0.9;
+  color: var(--ps-primary);
+}
+
+.site-footer {
+  background: var(--ps-pine);
+}
+
+@media print {
+  .site-nav,
+  .site-footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .receipt-sheet {
+    box-shadow: none;
+    margin: 0;
+    max-width: none;
+  }
+}
