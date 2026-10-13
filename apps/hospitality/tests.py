@@ -6,9 +6,9 @@ from django.urls import reverse
 
 from apps.bookings.models import Order
 from apps.rooms.pricing import quote
-from apps.testing import days, make_owner, make_pet, make_room
+from apps.testing import days, make_order, make_owner, make_pet, make_room
 
-from .models import AddonService, Billing, Coupon, HolidayRate, VaccineRecord
+from .models import AddonService, Billing, Coupon, HolidayRate, StaffMember, VaccineRecord
 from .seed import seed_catalog
 from .services import ensure_member
 
@@ -116,3 +116,26 @@ class CatalogAuthTests(TestCase):
     def test_services_are_public(self):
         self.assertEqual(self.client.get(reverse("hospitality:services")).status_code, 200)
         self.assertFalse(get_user_model().objects.exists())
+
+
+class HouseAndReceiptTests(TestCase):
+    def test_house_board_is_public_and_hides_phones(self):
+        owner = make_owner(phone="13811112222")
+        pet = make_pet(owner=owner, name="团子")
+        make_order(pet=pet, room=make_room(), status=Order.Status.CHECKED_IN)
+        StaffMember.objects.create(name="赵护理", role=StaffMember.Role.CARER, phone="13900001111", skills="猫咪")
+        response = self.client.get(reverse("hospitality:house"))
+        self.assertContains(response, "团子")
+        self.assertContains(response, "赵护理")
+        self.assertNotContains(response, "13811112222")
+        self.assertNotContains(response, "13900001111")
+
+    def test_receipt_stays_with_the_owner(self):
+        owner = make_owner()
+        order = make_order(pet=make_pet(owner=owner, name="布丁"))
+        url = reverse("web:order_receipt", args=[order.order_no])
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.client.force_login(owner.user)
+        response = self.client.get(url)
+        self.assertContains(response, "布丁")
+        self.assertContains(response, order.order_no)
