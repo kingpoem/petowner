@@ -13,22 +13,22 @@ PawStay 宠物寄养 —— 开发与运行（课程精简版）
   make test    # 单元测试
   make help    # 全部命令
 
-  管理员：/admin/  → admin / admin123
-  顾客：  登录页   → 13800000001 / pawstay123
+  门店管理员：登录选「门店」→ /store/ → admin / admin123
+  门店前台：  13900000001 / pawstay123
+  门店护理：  13900000002 / pawstay123
+  顾客：      登录选「顾客」→ 13800000001 / pawstay123
 
   详见 docs/LAUNCH.md 与 README.md。
-  开发环境短信验证码打印在 make run 控制台（SMS_BACKEND=console）。
 
 
 三、常用命令
 ------------
   make migrate       迁移
   make reset-demo    清空后重新种子
-  make expire        取消超时未支付订单
   make check         Django 检查 + 迁移完整性
 
 
 四、配置
 --------
   复制 .env.example 为 .env。
-  课程默认 PAYMENT_SANDBOX=true（沙箱支付，无需真实商户号）。
+  支付为课程沙箱一键已付，无需微信/支付宝密钥。

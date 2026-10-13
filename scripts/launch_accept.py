@@ -1,4 +1,4 @@
-"""上线前验收：关键路由可达、支付沙箱、短信与域名配置自检。
+"""上线前验收：关键路由可达与域名配置自检。
 
 用法：uv run python scripts/launch_accept.py
 退出码 0 = 通过；非 0 = 有阻断项。
@@ -42,6 +42,7 @@ def main() -> int:
         ("房间列表", "/rooms/"),
         ("健康检查", "/healthz"),
         ("登录页", reverse("web:login")),
+        ("门店登录", "/store/login/"),
     ]:
         try:
             resp = client.get(path)
@@ -62,20 +63,7 @@ def main() -> int:
         check("DEBUG 关闭", True)
 
     fails += 0 if check("ALLOWED_HOSTS 已配置", bool(settings.ALLOWED_HOSTS)) else 1
-
-    if settings.PAYMENT_SANDBOX:
-        print("[WARN] PAYMENT_SANDBOX=true（真实收款前请关闭并配置微信/支付宝密钥）")
-    else:
-        fails += 0 if check("微信支付配置", bool(settings.WECHAT_APP_ID and settings.WECHAT_MCH_ID and settings.WECHAT_API_KEY)) else 1
-        fails += 0 if check(
-            "支付宝配置", bool(settings.ALIPAY_APP_ID and settings.ALIPAY_PRIVATE_KEY and settings.ALIPAY_PUBLIC_KEY)
-        ) else 1
-        fails += 0 if check("微信退款证书", bool(settings.WECHAT_CERT_PATH)) else 1
-
-    if settings.SMS_BACKEND == "console":
-        print("[WARN] SMS_BACKEND=console（生产请改 aliyun 并配置模板）")
-    else:
-        fails += 0 if check("短信配置", bool(settings.SMS_ACCESS_KEY_ID and settings.SMS_SIGN_NAME)) else 1
+    print("[INFO] 支付为课程沙箱一键已付，无需微信/支付宝密钥")
 
     print()
     if fails:

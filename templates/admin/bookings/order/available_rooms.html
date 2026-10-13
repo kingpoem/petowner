@@ -2,54 +2,69 @@
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
-  <a href="{% url 'admin:index' %}">首页</a>
-  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-  &rsaquo; <a href="{% url 'admin:bookings_order_changelist' %}">{{ opts.verbose_name_plural }}</a>
+  <a href="{% url 'admin:index' %}">门店功能</a>
+  &rsaquo; <a href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>
   &rsaquo; {{ title }}
 </div>
 {% endblock %}
 
 {% block content %}
-<div id="content-main">
-  <form method="get">
-    {{ form.non_field_errors }}
-    <fieldset class="module aligned">
-      {% for field in form %}
-        <div class="form-row">
-          {{ field.errors }}
-          {{ field.label_tag }} {{ field }}
-        </div>
-      {% endfor %}
-    </fieldset>
-    <div class="submit-row">
-      <input type="submit" class="default" value="查询">
-    </div>
-  </form>
+<div id="content-main" class="ps-avail">
+  <div class="ps-avail-card">
+    <h1 class="ps-avail-title">查空房开单</h1>
+    <p class="ps-avail-sub">选择入住 / 离店日期与宠物类型，一键跳转录入订单。</p>
+    <form method="get">
+      {{ form.non_field_errors }}
+      <fieldset class="module aligned">
+        {% for field in form %}
+          <div class="form-row">
+            {{ field.errors }}
+            {{ field.label_tag }} {{ field }}
+          </div>
+        {% endfor %}
+      </fieldset>
+      <div class="submit-row">
+        <input type="submit" class="default" value="查询可用房间">
+      </div>
+    </form>
+  </div>
 
   {% if rooms is not None %}
-    <h2>查询结果：共 {{ rooms|length }} 个可用房间</h2>
+  <div class="ps-avail-card">
+    <h2>结果：{{ rooms|length }} 间可订</h2>
     {% if rooms %}
-      <table>
+      <table class="ps-avail-table">
         <thead>
-          <tr><th>房间编号</th><th>房间类型</th><th>适用宠物</th><th>单价（元/天）</th><th>容量</th><th>预计金额（元）</th><th></th></tr>
+          <tr>
+            <th>房间</th>
+            <th>类型</th>
+            <th>适用</th>
+            <th>单价</th>
+            <th>容量</th>
+            <th>预计金额</th>
+            <th></th>
+          </tr>
         </thead>
         <tbody>
           {% for room, total in rooms %}
             <tr>
-              <td>{{ room.number }}</td>
+              <td><strong>{{ room.number }}</strong>{% if room.name %}<div class="quiet">{{ room.name }}</div>{% endif %}</td>
               <td>{{ room.get_room_type_display }}</td>
               <td>{{ room.get_pet_type_display }}</td>
-              <td>{{ room.price }}</td>
+              <td>¥{{ room.price }}/晚</td>
               <td>{{ room.capacity }}</td>
-              <td>{{ total }}</td>
-              <td><a href="{% url 'admin:bookings_order_add' %}?room={{ room.pk }}&check_in={{ form.cleaned_data.check_in|date:'Y-m-d' }}&check_out={{ form.cleaned_data.check_out|date:'Y-m-d' }}">立即预约</a></td>
+              <td><strong>¥{{ total }}</strong></td>
+              <td>
+                <a class="button ps-avail-book" href="{% url 'admin:bookings_order_add' %}?room={{ room.pk }}&check_in={{ form.check_in.value|date:'Y-m-d' }}&check_out={{ form.check_out.value|date:'Y-m-d' }}">开单</a>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <p>该时间段没有可用房间，请调整日期或宠物类型。</p>
+      <p class="ps-empty">该时段暂无可用房间，可调整日期或房型后再查。</p>
     {% endif %}
+  </div>
   {% endif %}
 </div>
 {% endblock %}

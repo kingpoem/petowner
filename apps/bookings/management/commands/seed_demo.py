@@ -4,7 +4,6 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group, Permission
 from django.core.files import File
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -12,14 +11,19 @@ from django.utils import timezone
 
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review, ServiceRecord
-from apps.notifications.models import Notification
 from apps.pets.models import Owner, Pet, PetSize, Species
 from apps.rooms.models import Room
 from apps.stores.models import Store
+from apps.stores.staff import create_store_user, ensure_store_groups
 
 STOCK = Path(settings.BASE_DIR) / "static" / "img" / "stock"
 DEMO_PASSWORD = "pawstay123"
+# 门店演示账号（官网登录选「门店」）
+STORE_ADMIN = ("admin", "admin123", "门店管理员")
+STORE_FRONT = ("13900000001", DEMO_PASSWORD, "前台小陈")
+STORE_CARER = ("13900000002", DEMO_PASSWORD, "护理师小赵")
 
+# 约 6 间：覆盖猫/狗 × 标准/豪华/套房(VIP)
 ROOMS = [
     {
         "number": "A101",
@@ -32,7 +36,7 @@ ROOMS = [
         "area": "6",
         "amenities": "恒温空调,24h监控,软垫睡床,每日两次遛弯",
         "photo": "room-dog-standard",
-        "description": "朝南采光，配备加厚记忆棉睡垫。适合中小型犬，可与同伴合住。",
+        "description": "朝南采光的标准独立间，配备加厚记忆棉睡垫。适合中小型犬，同一家庭可合住两只。",
     },
     {
         "number": "A201",
@@ -45,7 +49,20 @@ ROOMS = [
         "area": "12",
         "amenities": "独立新风,24h监控,宠物沙发,独立活动区,每日视频",
         "photo": "room-dog-deluxe",
-        "description": "单宠独享 12㎡ 大空间，配宠物沙发与玩具角，大型犬也能舒展身体。",
+        "description": "单宠独享 12㎡，配宠物沙发与玩具角。一对一互动更多，适合中大型犬或不愿合笼的狗狗。",
+    },
+    {
+        "number": "A301",
+        "name": "阳光 VIP 套房",
+        "room_type": Room.RoomType.VIP,
+        "pet_type": Room.PetType.DOG,
+        "max_pet_size": PetSize.LARGE,
+        "price": "358",
+        "capacity": 2,
+        "area": "18",
+        "amenities": "独立小院,落地窗,24h摄像头,每日视频,专属护理师",
+        "photo": "room-dog-vip",
+        "description": "带独立小院的 VIP 套房，阳光充足。可两只大型犬同住，含专属护理与实时监控。",
     },
     {
         "number": "B101",
@@ -57,8 +74,21 @@ ROOMS = [
         "capacity": 3,
         "area": "8",
         "amenities": "猫爬架,恒温空调,24h监控,猫咪安静区",
-        "photo": "room-cat-standard",
-        "description": "位于猫咪安静区，远离犬只叫声。多层猫爬架和逗猫玩具，每天两次互动陪玩。",
+        "photo": "room-cat-play",
+        "description": "位于猫咪安静区，远离犬只叫声。多层猫爬架与逗猫玩具，每天两次互动陪玩。",
+    },
+    {
+        "number": "B102",
+        "name": "猫咪豪华间",
+        "room_type": Room.RoomType.DELUXE,
+        "pet_type": Room.PetType.CAT,
+        "max_pet_size": PetSize.MEDIUM,
+        "price": "98",
+        "capacity": 2,
+        "area": "9",
+        "amenities": "双层猫别墅,恒温空调,24h监控,每日视频",
+        "photo": "room-cat-deluxe",
+        "description": "双层猫别墅结构，空间与隔音升级。适合两只性格合拍的猫咪同住。",
     },
     {
         "number": "B201",
@@ -71,33 +101,7 @@ ROOMS = [
         "area": "10",
         "amenities": "落地观景窗,独立新风,猫爬架,每日视频,24h监控",
         "photo": "room-cat-suite",
-        "description": "带落地窗的独立套房，猫咪可以趴在窗台晒太阳看风景，适合胆小或需要独处的猫咪。",
-    },
-    {
-        "number": "C101",
-        "name": "温馨家庭房",
-        "room_type": Room.RoomType.DELUXE,
-        "pet_type": Room.PetType.ANY,
-        "max_pet_size": PetSize.MEDIUM,
-        "price": "128",
-        "capacity": 2,
-        "area": "14",
-        "amenities": "猫狗同住,24h监控,恒温空调,家居陈设",
-        "photo": "room-any",
-        "description": "按家庭客厅布置，同一家庭的猫狗可以一起入住，减少分离焦虑。",
-    },
-    {
-        "number": "A102",
-        "name": "经济标准间",
-        "room_type": Room.RoomType.STANDARD,
-        "pet_type": Room.PetType.DOG,
-        "max_pet_size": PetSize.SMALL,
-        "price": "68",
-        "capacity": 2,
-        "area": "4",
-        "amenities": "恒温空调,24h监控,每日两次遛弯",
-        "photo": "room-dog-economy",
-        "description": "小型犬专属的经济之选，基础护理一样不少。",
+        "description": "实墙独立套房，窗台可晒太阳看风景。适合胆小、老年或易应激、需要独处的猫咪。",
     },
 ]
 
@@ -116,7 +120,6 @@ def _at(day: date, hour: int, minute: int = 0) -> datetime:
 
 def _backdate(order: Order, lead_days: int = 7):
     """业务方法按“当前时间”打时间戳；演示订单需要挪到与入住日期吻合的时间点。"""
-    old_no, old_link = order.order_no, order.get_absolute_url()
     booked = _at(order.check_in - timedelta(days=lead_days), 20, 30)
     paid = booked + timedelta(minutes=4) if order.paid_at else None
     checked_in = None
@@ -135,44 +138,48 @@ def _backdate(order: Order, lead_days: int = 7):
     )
     order.refresh_from_db()
     order.payments.update(created_at=paid or booked)
-    stamps = {"支付成功": paid, "已办理入住": checked_in, "寄养已完成": checked_out}
-    care_times = {r.care_content[:80]: r.feeding_time for r in order.service_records.all()}
-    for note in Notification.objects.filter(link=old_link):
-        note.link = order.get_absolute_url()
-        note.body = note.body.replace(old_no, order.order_no)
-        note.created_at = stamps.get(note.title) or care_times.get(note.body) or note.created_at
-        note.is_read = order.status == Order.Status.COMPLETED
-        note.save()
     Review.objects.filter(order=order).update(created_at=_at(order.check_out + timedelta(days=1), 21))
 
 
 class Command(BaseCommand):
-    help = f"写入演示数据：管理员 admin/admin123，演示顾客 13800000001/{DEMO_PASSWORD}（已有业务数据则跳过）"
+    help = (
+        f"写入演示数据：门店 admin/admin123、前台 {STORE_FRONT[0]}/{DEMO_PASSWORD}；"
+        f"顾客 13800000001/{DEMO_PASSWORD}（已有顾客业务数据则跳过订单注入）"
+    )
 
     @transaction.atomic
     def handle(self, *args, **options):
         User = get_user_model()
-        if not User.objects.filter(username="admin").exists():
-            User.objects.create_superuser("admin", "admin@example.com", "admin123")
-            self.stdout.write("已创建管理员 admin / admin123")
-        self._groups()
+        self._seed_store_staff()
 
         flagship = Store.objects.filter(code="flagship").first() or Store.default()
-
-        if Room.objects.exists():
-            Room.objects.filter(store__isnull=True).update(store=flagship)
-            self.stdout.write(self.style.WARNING("已存在业务数据，跳过演示数据写入（已补全门店关联）"))
-            return
+        Room.objects.filter(store__isnull=True).update(store=flagship)
 
         rooms = {}
+        created_rooms = 0
         for spec in ROOMS:
             spec = dict(spec)
             slot = spec.pop("photo")
-            room = Room.objects.create(
-                store=flagship, **{**spec, "price": Decimal(spec["price"]), "area": Decimal(spec["area"])}
+            defaults = {**spec, "price": Decimal(spec["price"]), "area": Decimal(spec["area"])}
+            room, created = Room.objects.get_or_create(
+                store=flagship, number=spec["number"], defaults=defaults
             )
-            _attach(room, "photo", slot)
+            if created:
+                created_rooms += 1
+            _attach(room, "photo", slot)  # 演示房统一刷新占位图，避免多间共用同一张
             rooms[room.number] = room
+        if created_rooms:
+            self.stdout.write(f"已补充 {created_rooms} 间演示房间")
+        self.stdout.write(f"已刷新 {len(rooms)} 间演示房间照片")
+
+        # 本店仅接待猫狗：下架历史异宠样例房
+        hidden = Room.objects.filter(pet_type__in=("rabbit", "bird", "other")).update(is_listed=False)
+        if hidden:
+            self.stdout.write(f"已下架 {hidden} 间非猫狗房间")
+
+        if Owner.objects.filter(phone="13800000001").exists():
+            self.stdout.write(self.style.WARNING("已存在演示顾客，跳过订单与评价演示数据（门店账号已确保可用）"))
+            return
 
         today = timezone.localdate()
         vaccine = today + timedelta(days=300)
@@ -255,7 +262,7 @@ class Command(BaseCommand):
                 check_out=today + timedelta(days=start + nights),
                 source=Order.Source.ONLINE,
             )
-            o.pay(Payment.Method.WECHAT)
+            o.pay(Payment.Method.ONLINE)
             o.start_boarding()
             ServiceRecord.objects.create(
                 order=o,
@@ -292,7 +299,7 @@ class Command(BaseCommand):
             source=Order.Source.ONLINE,
             note="旺财对鸡肉过敏，请不要喂鸡肉零食",
         )
-        boarding.pay(Payment.Method.ALIPAY)
+        boarding.pay(Payment.Method.ONLINE)
         boarding.start_boarding()
         for day, hour, slot, content, appetite, health, note in [
             (0, 18, "care-golden-eat", "晚餐 200g 狗粮全部吃完，饮水正常", "全部吃完", "良好", ""),
@@ -329,7 +336,7 @@ class Command(BaseCommand):
             check_out=today,
             source=Order.Source.ONLINE,
         )
-        departing.pay(Payment.Method.WECHAT)
+        departing.pay(Payment.Method.ONLINE)
         departing.start_boarding()
         ServiceRecord.objects.create(
             order=departing,
@@ -348,17 +355,17 @@ class Command(BaseCommand):
             source=Order.Source.ONLINE,
             note="下午三点左右到店，自带狗粮",
         )
-        arriving.pay(Payment.Method.ALIPAY)
+        arriving.pay(Payment.Method.ONLINE)
         _backdate(arriving, lead_days=3)
 
         upcoming = Order.objects.create(
             pet=doudou,
-            room=rooms["C101"],
+            room=rooms["A101"],
             check_in=today + timedelta(days=5),
             check_out=today + timedelta(days=12),
             source=Order.Source.ONLINE,
         )
-        upcoming.pay(Payment.Method.WECHAT)
+        upcoming.pay(Payment.Method.ONLINE)
         _backdate(upcoming)
         phone_booking = Order.objects.create(
             pet=mimi,
@@ -373,35 +380,22 @@ class Command(BaseCommand):
         Owner.objects.update(created_at=months_ago)
         Pet.objects.update(created_at=months_ago)
 
-        self.stdout.write(self.style.SUCCESS(f"演示数据写入完成；演示顾客 13800000001 / {DEMO_PASSWORD}"))
-
-    def _groups(self):
-        def perms(*codenames):
-            return Permission.objects.filter(codename__in=codenames)
-
-        front, _ = Group.objects.get_or_create(name="前台")
-        front.permissions.set(
-            perms(
-                "view_owner",
-                "add_owner",
-                "change_owner",
-                "view_pet",
-                "add_pet",
-                "change_pet",
-                "view_room",
-                "change_room",
-                "view_order",
-                "add_order",
-                "change_order",
-                "view_payment",
-                "view_servicerecord",
-                "view_review",
-                "change_review",
+        self.stdout.write(
+            self.style.SUCCESS(
+                "演示数据写入完成；"
+                f"门店 admin/admin123、前台 {STORE_FRONT[0]}/{DEMO_PASSWORD}、护理 {STORE_CARER[0]}/{DEMO_PASSWORD}；"
+                f"顾客 13800000001/{DEMO_PASSWORD}"
             )
         )
-        carer, _ = Group.objects.get_or_create(name="护理师")
-        carer.permissions.set(
-            perms(
-                "view_pet", "view_order", "view_room", "view_servicerecord", "add_servicerecord", "change_servicerecord"
-            )
+
+    def _seed_store_staff(self):
+        """注入门店超级管理员、前台、护理师账号。"""
+        ensure_store_groups()
+        admin_user = create_store_user(
+            STORE_ADMIN[0], STORE_ADMIN[1], name=STORE_ADMIN[2], email="admin@example.com", role="admin"
+        )
+        front_user = create_store_user(STORE_FRONT[0], STORE_FRONT[1], name=STORE_FRONT[2], role="front")
+        carer_user = create_store_user(STORE_CARER[0], STORE_CARER[1], name=STORE_CARER[2], role="carer")
+        self.stdout.write(
+            f"门店账号就绪：管理员 {admin_user.username}、前台 {front_user.username}、护理师 {carer_user.username}"
         )

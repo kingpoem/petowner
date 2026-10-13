@@ -1,0 +1,48 @@
+{% extends "web/me_base.html" %}
+{% load web_tags %}
+
+{% block title %}服务评价{% endblock %}
+
+{% block main %}
+<div class="mb-4">
+  <h1 class="h3 mb-1">服务评价</h1>
+  <p class="text-muted mb-0">寄养结束后可对服务评分；已提交的评价也会显示在这里</p>
+</div>
+
+<div class="ps-card p-4 mb-4">
+  <h5 class="mb-3">待评价</h5>
+  {% for order in pending %}
+    <div class="d-flex align-items-center gap-3 py-3 {% if not forloop.last %}border-bottom{% endif %}">
+      <img class="avatar" src="{% image_url order.pet size=160 %}" alt="{{ order.pet.name }}">
+      <div class="flex-grow-1">
+        <div class="fw-semibold">{{ order.pet.name }} · {{ order.room.display_name }}</div>
+        <div class="small text-muted">{{ order.check_in|date:"Y-m-d" }} 至 {{ order.check_out|date:"Y-m-d" }} · {{ order.order_no }}</div>
+      </div>
+      <a class="btn btn-sm btn-primary" href="{% url 'web:order_review' order.order_no %}">去评价</a>
+    </div>
+  {% empty %}
+    <p class="text-muted small mb-0">暂无待评价订单</p>
+  {% endfor %}
+</div>
+
+<div class="ps-card p-4">
+  <h5 class="mb-3">我的评价</h5>
+  {% for review in reviews %}
+    <div class="py-3 {% if not forloop.last %}border-bottom{% endif %}">
+      <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+        <div>
+          <div class="fw-semibold">{{ review.order.pet.name }} · {{ review.order.room.display_name }}</div>
+          <div class="small text-muted">{{ review.created_at|date:"Y-m-d" }} · 订单 {{ review.order.order_no }}</div>
+        </div>
+        <span class="stars">{% for _ in review.rating|stars %}★{% endfor %}</span>
+      </div>
+      {% if review.content %}<p class="mb-1">{{ review.content }}</p>{% endif %}
+      {% if review.feedback %}<p class="small text-muted mb-1">意见反馈：{{ review.feedback }}</p>{% endif %}
+      {% if review.reply %}<p class="small text-muted mb-0 border-top pt-2 mt-2"><i class="bi bi-chat-heart text-primary me-1"></i>门店回复：{{ review.reply }}</p>{% endif %}
+      <a class="small" href="{{ review.order.get_absolute_url }}">查看寄养记录</a>
+    </div>
+  {% empty %}
+    <p class="text-muted small mb-0">还没有提交过评价</p>
+  {% endfor %}
+</div>
+{% endblock %}

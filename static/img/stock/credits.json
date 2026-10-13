@@ -41,12 +41,26 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
     "source": "https://commons.wikimedia.org/wiki/File:Tabby_Cat_with_Toy_Mouse.jpg"
   },
+  "room-dog-economy": {
+    "title": "12-week-old Choclolate Labrador Retriever Puppy.jpg",
+    "author": "Rob Hanson",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:12-week-old_Choclolate_Labrador_Retriever_Puppy.jpg"
+  },
   "room-dog-standard": {
     "title": "This dog is \"comfy\"- 2013-12-27 10-51.jpg",
     "author": "User:Austurges",
     "license": "CC BY-SA 3.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
     "source": "https://commons.wikimedia.org/wiki/File:This_dog_is_%22comfy%22-_2013-12-27_10-51.jpg"
+  },
+  "room-dog-run": {
+    "title": "Running in the grass yard@Affectionate Pet Care.JPG",
+    "author": "Kd rome",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Running_in_the_grass_yard@Affectionate_Pet_Care.JPG"
   },
   "room-dog-deluxe": {
     "title": "A spoiled dog tucked in bed.jpg",
@@ -55,12 +69,33 @@
     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
     "source": "https://commons.wikimedia.org/wiki/File:A_spoiled_dog_tucked_in_bed.jpg"
   },
+  "room-dog-duo": {
+    "title": "Two dogs sitting outdoors.jpg",
+    "author": "Sanskritidubey",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Two_dogs_sitting_outdoors.jpg"
+  },
+  "room-dog-vip": {
+    "title": "Dog in garden.jpg",
+    "author": "Planet explorer 1",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Dog_in_garden.jpg"
+  },
   "room-cat-standard": {
     "title": "Mama , I'm bored-There's nothing to do !!!!! (4507339843).jpg",
     "author": "Trish Hamme from Reno , Nevada, USA",
     "license": "CC BY 2.0",
     "license_url": "https://creativecommons.org/licenses/by/2.0",
     "source": "https://commons.wikimedia.org/wiki/File:Mama_,_I%27m_bored-There%27s_nothing_to_do_!!!!!_(4507339843).jpg"
+  },
+  "room-cat-deluxe": {
+    "title": "Cat on a cat tree.webp",
+    "author": "Honbra",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Cat_on_a_cat_tree.webp"
   },
   "room-cat-suite": {
     "title": "White sleeping cat in Breitenstein.jpg",
@@ -69,6 +104,13 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
     "source": "https://commons.wikimedia.org/wiki/File:White_sleeping_cat_in_Breitenstein.jpg"
   },
+  "room-cat-vip": {
+    "title": "Cat sunbathing.jpg",
+    "author": "Whisper788",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Cat_sunbathing.jpg"
+  },
   "room-any": {
     "title": "December 2008 sleeping cat and dog.jpg",
     "author": "BlackKitten",
@@ -76,12 +118,12 @@
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
     "source": "https://commons.wikimedia.org/wiki/File:December_2008_sleeping_cat_and_dog.jpg"
   },
-  "room-dog-economy": {
-    "title": "12-week-old Choclolate Labrador Retriever Puppy.jpg",
-    "author": "Rob Hanson",
+  "room-cat-play": {
+    "title": "Cats Playing on Cat Power Tower (8030280409).jpg",
+    "author": "Jennifer C.",
     "license": "CC BY 2.0",
     "license_url": "https://creativecommons.org/licenses/by/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:12-week-old_Choclolate_Labrador_Retriever_Puppy.jpg"
+    "source": "https://commons.wikimedia.org/wiki/File:Cats_Playing_on_Cat_Power_Tower_(8030280409).jpg"
   },
   "pet-labrador": {
     "title": "Labrador Retriever (1210559).jpg",
@@ -138,19 +180,5 @@
     "license": "CC BY-SA 2.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
     "source": "https://commons.wikimedia.org/wiki/File:Penny_at_the_beach_-_Flickr_-_marneejill.jpg"
-  },
-  "ambient-suite": {
-    "title": "A dog rests inside a modern wooden dog crate",
-    "author": "Kailun Zhang",
-    "license": "Unsplash License",
-    "license_url": "https://unsplash.com/license",
-    "source": "https://unsplash.com/photos/a-dog-rests-inside-a-modern-wooden-dog-crate-2z4vxXTH8_Y"
-  },
-  "member-pet": {
-    "title": "A fluffy pomeranian dog with expressive eyes",
-    "author": "Liam",
-    "license": "Unsplash License",
-    "license_url": "https://unsplash.com/license",
-    "source": "https://unsplash.com/photos/a-fluffy-pomeranian-dog-with-expressive-eyes-vzL6BJUidfA"
   }
 }

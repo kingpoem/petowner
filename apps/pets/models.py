@@ -11,7 +11,6 @@ from apps.images import OptimizedImageField
 class Species(models.TextChoices):
     DOG = "dog", "狗"
     CAT = "cat", "猫"
-    OTHER = "other", "其他"
 
 
 class PetSize(models.IntegerChoices):

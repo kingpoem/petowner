@@ -1,10 +1,16 @@
 {% extends "web/me_base.html" %}
 {% load web_tags %}
 
-{% block title %}我的订单{% endblock %}
+{% block title %}寄养记录{% endblock %}
 
 {% block main %}
-<h1 class="h3 mb-4">我的订单</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+  <div>
+    <h1 class="h3 mb-1">寄养记录</h1>
+    <p class="text-muted small mb-0">查询历史寄养与当前服务状态；点进订单可看护理进度</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'web:room_list' %}"><i class="bi bi-door-open me-1"></i>查询房间</a>
+</div>
 <ul class="nav nav-pills mb-4 gap-1">
   <li class="nav-item"><a class="nav-link {% if not status %}active{% endif %}" href="?">全部</a></li>
   {% for value, label in statuses %}
@@ -19,13 +25,14 @@
         <span class="fw-bold">{{ order.pet.name }} · {{ order.room.display_name }}</span>
         <span class="badge rounded-pill text-bg-{{ order.status|badge }}">{{ order.get_status_display }}</span>
         <span class="badge rounded-pill text-bg-{{ order.payment_status|badge }}">{{ order.get_payment_status_display }}</span>
+        {% if order.can_review %}<span class="badge rounded-pill text-bg-warning">待评价</span>{% endif %}
       </div>
       <div class="small text-muted mt-1">{{ order.check_in|date:"Y-m-d" }} 至 {{ order.check_out|date:"Y-m-d" }} · {{ order.days }} 晚 · {{ order.order_no }}</div>
     </div>
     <div class="price">¥{{ order.amount }}</div>
   </a>
 {% empty %}
-  <div class="ps-card empty-state"><i class="bi bi-receipt"></i><p class="mt-2">暂无订单</p><a class="btn btn-primary" href="{% url 'web:room_list' %}">去预约</a></div>
+  <div class="ps-card empty-state"><i class="bi bi-journal-text"></i><p class="mt-2">暂无寄养记录</p><a class="btn btn-primary" href="{% url 'web:room_list' %}">去查询房间</a></div>
 {% endfor %}
 {% if page_obj.has_other_pages %}
 <nav class="mt-4"><ul class="pagination justify-content-center">

@@ -6,13 +6,12 @@
 {% block main %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
-    <a href="{% url 'web:order_list' %}" class="small text-muted"><i class="bi bi-chevron-left"></i>我的订单</a>
-    <h1 class="h3 mb-0 mt-1">订单 {{ order.order_no }}</h1>
+    <a href="{% url 'web:order_list' %}" class="small text-muted"><i class="bi bi-chevron-left"></i>寄养记录</a>
+    <h1 class="h3 mb-0 mt-1">寄养服务 · {{ order.order_no }}</h1>
   </div>
   <div class="d-flex gap-2">
-    {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>{% if order.payment_status == 'partial' %}补差价{% else %}去支付{% endif %} ¥{{ balance_due }}</a>{% endif %}
+    {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>去支付 ¥{{ balance_due }}</a>{% endif %}
     {% if order.can_review %}<a class="btn btn-primary" href="{% url 'web:order_review' order.order_no %}"><i class="bi bi-star me-1"></i>评价本次服务</a>{% endif %}
-    {% if order.can_reschedule %}<a class="btn btn-light" href="{% url 'web:order_reschedule' order.order_no %}"><i class="bi bi-calendar2-range me-1"></i>改期 / 换房</a>{% endif %}
     {% if order.can_cancel %}<button class="btn btn-light text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">取消预约</button>{% endif %}
   </div>
 </div>
@@ -74,7 +73,6 @@
         <dt class="col-4 text-muted fw-normal">支付状态</dt><dd class="col-8"><span class="badge rounded-pill text-bg-{{ order.payment_status|badge }}">{{ order.get_payment_status_display }}</span></dd>
         {% if order.discount %}<dt class="col-4 text-muted fw-normal">优惠</dt><dd class="col-8 text-success">-¥{{ order.discount }}</dd>{% endif %}
         {% if order.status == 'cancelled' %}
-          {% if order.cancel_fee %}<dt class="col-4 text-muted fw-normal">违约金</dt><dd class="col-8 fw-bold">¥{{ order.cancel_fee }}</dd>{% endif %}
         {% else %}
           <dt class="col-4 text-muted fw-normal">订单金额</dt><dd class="col-8 fw-bold text-primary">¥{{ order.amount }}</dd>
         {% endif %}
@@ -113,12 +111,11 @@
       {% csrf_token %}
       <div class="modal-header border-0"><h5 class="modal-title">确认取消预约？</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        {% if cancel_fee %}
-          <div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle me-1"></i>已到入住日，取消将扣除首晚房费 <strong>¥{{ cancel_fee }}</strong>{% if cancel_refund > 0 %}，其余 ¥{{ cancel_refund }} 原路退回{% endif %}。</div>
-        {% elif paid %}
-          <p class="small text-muted">入住日前取消免收费用，已支付的 ¥{{ paid }} 将全额原路退回。</p>
+        {% if paid %}
+          <p class="small text-muted">取消后订单作废；如需改期，请取消后重新预约或联系门店 {{ SITE.phone }}。</p>
+        {% else %}
+          <p class="small text-muted">确认取消该预约？取消后可重新选房下单。</p>
         {% endif %}
-        {% if order.can_reschedule %}<p class="small mb-3">只是时间有变？<a href="{% url 'web:order_reschedule' order.order_no %}">改期或换房</a>可保留订单，差价自动多退少补。</p>{% endif %}
         {% include "web/_field.html" with field=cancel_form.reason %}
       </div>
       <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">再想想</button><button class="btn btn-danger">确认取消</button></div>

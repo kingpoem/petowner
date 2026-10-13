@@ -5,7 +5,7 @@
 
 {% block extrastyle %}{{ block.super }}
 <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
-<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+<link rel="stylesheet" href="{% static 'css/admin.css' %}?v=6">
 <link rel="stylesheet" href="{% static 'css/datepicker.css' %}">
 {% endblock %}
 
@@ -14,10 +14,35 @@
 {% endblock %}
 
 {% block branding %}
-<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></div>
+<div id="site-name">
+  <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+</div>
+{% if user.is_authenticated and user.is_staff %}
+<nav class="ps-topnav" aria-label="门店功能">
+  {% if perms.pets.view_owner or perms.pets.view_pet %}
+  <a href="{% url 'admin:pets_owner_changelist' %}">顾客宠物</a>
+  {% endif %}
+  {% if perms.rooms.view_room %}
+  <a href="{% url 'admin:rooms_room_changelist' %}">寄养房间</a>
+  {% endif %}
+  {% if perms.bookings.view_order %}
+  <a href="{% url 'admin:bookings_order_changelist' %}">订单状态</a>
+  {% endif %}
+  {% if perms.care.view_servicerecord %}
+  <a href="{% url 'admin:care_servicerecord_changelist' %}">日常服务</a>
+  {% endif %}
+  {% if perms.care.view_review %}
+  <a href="{% url 'admin:care_review_changelist' %}">评价回复</a>
+  {% endif %}
+</nav>
+{% endif %}
 {% if user.is_anonymous %}
   {% include "admin/color_theme_toggle.html" %}
 {% endif %}
 {% endblock %}
 
-{% block nav-global %}{% endblock %}
+{% block nav-global %}
+{% if user.is_authenticated and user.is_staff %}
+<a class="ps-topnav-site" href="/" target="_blank" rel="noopener">顾客官网 ↗</a>
+{% endif %}
+{% endblock %}

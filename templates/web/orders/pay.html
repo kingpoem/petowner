@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load web_tags %}
 
 {% block title %}订单支付{% endblock %}
 
@@ -8,26 +7,15 @@
   <div class="ps-card p-4 p-md-5 my-5 wrap-sm pay-card">
     <div class="text-center mb-4">
       <div class="pay-success-badge mb-3"><i class="bi bi-check2-circle"></i> 预约已创建</div>
-      <div class="text-muted small">订单 {{ order.order_no }}{% if order.payment_status == 'partial' %} · 改期补差价{% endif %}</div>
+      <div class="text-muted small">订单 {{ order.order_no }}</div>
       <div class="display-6 fw-bold text-primary my-2">¥{{ order.balance_due }}</div>
       {% if order.discount %}<div class="small text-success mb-1">已含优惠 ¥{{ order.discount }}</div>{% endif %}
-      {% if order.payment_status == 'partial' %}<div class="small text-muted mb-1">订单金额 ¥{{ order.amount }}，已付 ¥{{ order.net_paid }}</div>{% endif %}
       <div class="small text-muted">{{ order.pet.name }} · {{ order.room.display_name }} · {{ order.check_in|date:"n月j日" }} - {{ order.check_out|date:"n月j日" }}（{{ order.days }} 晚）</div>
-      {% if order.pay_deadline %}<div class="small text-danger mt-2"><i class="bi bi-clock me-1"></i>请在 {{ order.pay_deadline|date:"H:i" }} 前完成支付，超时订单将自动取消</div>{% endif %}
-      {% if SITE.payment_sandbox %}<span class="badge text-bg-warning mt-3"><i class="bi bi-cone-striped me-1"></i>沙箱支付环境：不会产生真实扣款</span>{% endif %}
+      <span class="badge text-bg-warning mt-3"><i class="bi bi-cone-striped me-1"></i>演示支付：确认后即标记已付，不会真实扣款</span>
     </div>
     <form method="post">
       {% csrf_token %}
-      <div class="d-grid gap-3 mb-4">
-        {% for choice in form.method %}
-          <label class="pay-option">
-            {{ choice.tag }}
-            {% if choice.data.value == "wechat" %}<i class="bi bi-wechat" style="color:#09bb07;"></i>{% else %}<i class="bi bi-alipay" style="color:#1677ff;"></i>{% endif %}
-            <span class="fw-semibold">{{ choice.choice_label }}</span>
-          </label>
-        {% endfor %}
-      </div>
-      <button class="btn btn-primary btn-lg w-100">前往收银台 ¥{{ order.balance_due }}</button>
+      <button class="btn btn-primary btn-lg w-100">确认支付（演示）¥{{ order.balance_due }}</button>
     </form>
     <div class="text-center mt-3"><a class="small text-muted" href="{{ order.get_absolute_url }}">稍后支付，查看订单</a></div>
   </div>

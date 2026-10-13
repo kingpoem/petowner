@@ -26,29 +26,28 @@
       <div class="collapse navbar-collapse" id="mainNav">
         <ul class="navbar-nav mx-auto gap-lg-1">
           <li class="nav-item"><a class="nav-link {% if url_name == 'home' %}active{% endif %}" href="{% url 'web:home' %}">首页</a></li>
-          <li class="nav-item"><a class="nav-link {% if url_name == 'room_list' or url_name == 'room_detail' %}active{% endif %}" href="{% url 'web:room_list' %}">寄养房间</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#services">护理服务</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'web:home' %}#faq">常见问题</a></li>
+          <li class="nav-item"><a class="nav-link {% if url_name == 'room_list' or url_name == 'room_detail' or url_name == 'booking_create' %}active{% endif %}" href="{% url 'web:room_list' %}">房间查询</a></li>
+          {% if user.is_authenticated and user.owner_profile %}
+          <li class="nav-item"><a class="nav-link {% if url_name == 'order_list' or url_name == 'order_detail' %}active{% endif %}" href="{% url 'web:order_list' %}">寄养记录</a></li>
+          <li class="nav-item"><a class="nav-link {% if url_name == 'review_list' or url_name == 'order_review' %}active{% endif %}" href="{% url 'web:review_list' %}">服务评价</a></li>
+          {% endif %}
         </ul>
         <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
           {% if user.is_authenticated %}
             {% if user.is_staff %}
-              <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:index' %}"><i class="bi bi-speedometer2 me-1"></i>运营后台</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:index' %}"><i class="bi bi-shop me-1"></i>门店后台</a>
             {% endif %}
             {% if user.owner_profile %}
-              <a class="btn btn-sm btn-light position-relative rounded-circle px-2" href="{% url 'web:notifications' %}" aria-label="消息通知">
-                <i class="bi bi-bell fs-5"></i>
-                {% if unread_notifications %}<span class="badge rounded-pill text-bg-danger notif-dot">{{ unread_notifications }}</span>{% endif %}
-              </a>
               <div class="dropdown">
                 <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
                   <i class="bi bi-person-circle me-1"></i>{{ user.owner_profile.name }}
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                  <li><a class="dropdown-item" href="{% url 'web:dashboard' %}"><i class="bi bi-grid me-2"></i>个人中心</a></li>
-                  <li><a class="dropdown-item" href="{% url 'web:order_list' %}"><i class="bi bi-receipt me-2"></i>我的订单</a></li>
-                  <li><a class="dropdown-item" href="{% url 'web:pet_list' %}"><i class="bi bi-heart me-2"></i>我的宠物</a></li>
-                  <li><a class="dropdown-item" href="{% url 'web:profile' %}"><i class="bi bi-gear me-2"></i>账号设置</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:dashboard' %}"><i class="bi bi-grid me-2"></i>功能概览</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:profile' %}"><i class="bi bi-person-vcard me-2"></i>个人信息</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:pet_list' %}"><i class="bi bi-heart me-2"></i>宠物登记</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:order_list' %}"><i class="bi bi-journal-text me-2"></i>寄养记录</a></li>
+                  <li><a class="dropdown-item" href="{% url 'web:review_list' %}"><i class="bi bi-star me-2"></i>服务评价</a></li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <form method="post" action="{% url 'web:logout' %}">{% csrf_token %}
@@ -57,13 +56,13 @@
                   </li>
                 </ul>
               </div>
-              <a class="btn btn-primary btn-sm" href="{% url 'web:booking_create' %}">立即预约</a>
+              <a class="btn btn-primary btn-sm" href="{% url 'web:room_list' %}">去选房</a>
             {% else %}
               <form method="post" action="{% url 'web:logout' %}">{% csrf_token %}<button class="btn btn-sm btn-light">退出</button></form>
             {% endif %}
           {% else %}
             <a class="btn btn-sm btn-light" href="{% url 'web:login' %}">登录</a>
-            <a class="btn btn-primary btn-sm" href="{% url 'web:register' %}">注册预约</a>
+            <a class="btn btn-primary btn-sm" href="{% url 'web:register' %}">注册</a>
           {% endif %}
         </div>
       </div>
@@ -98,9 +97,9 @@
         <div class="col-6 col-lg-2">
           <h6>服务</h6>
           <ul class="list-unstyled small d-grid gap-2">
-            <li><a href="{% url 'web:room_list' %}">寄养房间</a></li>
-            <li><a href="{% url 'web:booking_create' %}">在线预约</a></li>
-            <li><a href="{% url 'web:home' %}#faq">常见问题</a></li>
+            <li><a href="{% url 'web:room_list' %}">房间查询</a></li>
+            <li><a href="{% url 'web:order_list' %}">寄养记录</a></li>
+            <li><a href="{% url 'web:page' 'faq' %}">常见问题</a></li>
           </ul>
         </div>
         <div class="col-6 col-lg-2">

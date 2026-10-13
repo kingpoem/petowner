@@ -22,7 +22,7 @@
         <h1 class="h2">{{ room.display_name }}</h1>
         <div class="text-muted mb-3">
           <span class="me-3"><i class="bi bi-door-open me-1"></i>{{ room.get_room_type_display }}</span>
-          <span class="me-3"><i class="bi bi-hearts me-1"></i>{% if room.pet_type == 'cat' %}猫咪专属{% elif room.pet_type == 'dog' %}狗狗专属{% else %}猫狗皆可{% endif %}</span>
+          <span class="me-3"><i class="bi bi-hearts me-1"></i>{{ room.get_pet_type_display }}</span>
           {% if room.area %}<span class="me-3"><i class="bi bi-arrows-angle-expand me-1"></i>{{ room.area|floatformat:"-1" }}㎡</span>{% endif %}
           <span class="me-3"><i class="bi bi-people me-1"></i>可住 {{ room.capacity }} 只</span>
           <span><i class="bi bi-rulers me-1"></i>最大接待{{ room.get_max_pet_size_display }}</span>
@@ -77,14 +77,14 @@
             <div class="d-flex justify-content-between pt-2 mt-2 border-top fs-5 fw-bold"><span>合计 {{ quote.days }} 晚</span><span class="text-primary">¥{{ quote.total }}</span></div>
           </div>
           {% if available %}
-            <a class="btn btn-primary btn-lg w-100 mt-3" href="{% url 'web:booking_create' %}?room={{ room.pk }}&check_in={{ form.cleaned_data.check_in|date:'Y-m-d' }}&check_out={{ form.cleaned_data.check_out|date:'Y-m-d' }}">预约这间</a>
+            <a class="btn btn-primary btn-lg w-100 mt-3" href="{% url 'web:booking_create' %}?room={{ room.pk }}&check_in={{ form.cleaned_data.check_in|date:'Y-m-d' }}&check_out={{ form.cleaned_data.check_out|date:'Y-m-d' }}">选定这间并下单</a>
           {% else %}
             <div class="alert alert-warning mt-3 mb-0 small">该房间在所选日期已满或不适用于所选宠物类型，<a href="{% url 'web:room_list' %}?{{ request.GET.urlencode }}">查看其他空房</a></div>
           {% endif %}
         {% else %}
-          <a class="btn btn-primary btn-lg w-100 mt-3" href="{% url 'web:booking_create' %}?room={{ room.pk }}">立即预约</a>
+          <a class="btn btn-primary btn-lg w-100 mt-3" href="{% url 'web:booking_create' %}?room={{ room.pk }}">选定这间并下单</a>
         {% endif %}
-        <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>入住前可免费取消；连住 {{ SITE.long_stay_days }} 晚及以上享 {{ SITE.long_stay_rate }} 折</p>
+        <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>入住前可免费取消；房费按晚数 × 日价计算</p>
       </div>
     </div>
   </div>

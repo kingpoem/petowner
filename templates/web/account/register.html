@@ -9,13 +9,24 @@
     <div class="text-center mb-4">
       <span class="brand-mark mx-auto mb-3" style="width:56px;height:56px;font-size:1.6rem;"><i class="bi bi-heart-fill"></i></span>
       <h1 class="h3">创建账号</h1>
-      <p class="text-muted small">一分钟注册，在线预约寄养</p>
+      <p class="text-muted small">请选择顾客或门店身份后注册</p>
     </div>
     <form method="post" novalidate>
       {% csrf_token %}
+      <div class="ps-role-pick mb-4" role="radiogroup" aria-label="账号类型">
+        {% for value, label in form.role.field.choices %}
+        <label class="ps-role-option">
+          <input type="radio" name="role" value="{{ value }}"{% if form.role.value == value or not form.role.value and value == 'customer' %} checked{% endif %}>
+          <span>
+            <strong>{% if value == 'customer' %}<i class="bi bi-person me-1"></i>{% else %}<i class="bi bi-shop me-1"></i>{% endif %}{{ label }}</strong>
+            <small>{% if value == 'customer' %}预约寄养、管理宠物与订单{% else %}进入门店后台，办理入住离店{% endif %}</small>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% for error in form.role.errors %}<div class="text-danger small mb-2">{{ error }}</div>{% endfor %}
       {% include "web/_field.html" with field=form.name %}
       {% include "web/_field.html" with field=form.phone %}
-      {% include "web/account/_sms_block.html" with purpose="register" %}
       {% include "web/_field.html" with field=form.email %}
       <div class="row">
         <div class="col-6">{% include "web/_field.html" with field=form.password1 %}</div>
@@ -34,5 +45,3 @@
   </div>
 </div>
 {% endblock %}
-
-{% block scripts %}<script src="{% static 'js/verify.js' %}"></script>{% endblock %}

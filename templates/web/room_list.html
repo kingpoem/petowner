@@ -7,14 +7,14 @@
   <div class="container">
     <div class="page-header mb-0">
       <p class="eyebrow text-primary mb-2">{{ SITE.name }}</p>
-      <h1>寄养房间</h1>
-      <p class="text-muted mb-0">选择日期查看实时空房与总价；系统会按宠物类型、体型与房间容量自动匹配</p>
+      <h1>房间查询</h1>
+      <p class="text-muted mb-0">本店仅接收<strong>猫与狗</strong>。按类型与日期查空房，选定房间后生成寄养订单。</p>
     </div>
   </div>
 </div>
 
 <div class="container room-list-body">
-  <form class="ps-card search-panel p-3 p-md-4 mb-4" method="get">
+  <form class="ps-card search-panel p-3 p-md-4 mb-4" method="get" id="roomSearch">
     <div class="row g-3 align-items-end">
       <div class="col-6 col-lg-2">
         <label class="form-label small fw-semibold text-muted" for="{{ form.species.id_for_label }}">宠物类型</label>{{ form.species }}
@@ -32,10 +32,35 @@
         <button class="btn btn-primary"><i class="bi bi-search me-1"></i>查询空房</button>
       </div>
     </div>
+    <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1 text-primary"></i>按晚计价 · 入住前免费取消 · <a href="{% url 'web:page' 'faq' %}#pricing">定价与常见问题</a></p>
     {% if form.is_bound and form.errors %}
       <div class="text-danger small mt-2">{% for field in form %}{% for e in field.errors %}{{ field.label }}：{{ e }} {% endfor %}{% endfor %}</div>
     {% endif %}
   </form>
+
+  {% if not searched %}
+  <section class="room-type-guide mb-5" aria-labelledby="roomTypeGuideTitle">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+      <div>
+        <h2 class="h5 mb-1" id="roomTypeGuideTitle">房型说明</h2>
+        <p class="small text-muted mb-0">对应真实寄养里的标准笼位、豪华房、独立套房与 VIP 带院房位</p>
+      </div>
+    </div>
+    <div class="row g-3">
+      {% for guide in room_type_guides %}
+      <div class="col-md-6 col-xl-3">
+        <a class="room-type-card h-100" href="?room_type={{ guide.key }}#roomGrid">
+          <div class="room-type-icon"><i class="bi {{ guide.icon }}"></i></div>
+          <h3 class="h6 mb-1">{{ guide.title }}</h3>
+          <p class="small text-primary mb-2">{{ guide.subtitle }}</p>
+          <p class="small text-muted mb-2">{{ guide.blurb }}</p>
+          <div class="small fw-semibold">{{ guide.price_hint }}</div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 
   {% if searched %}
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -54,18 +79,30 @@
       <div class="ps-card empty-state">
         <i class="bi bi-calendar-x"></i>
         <h5 class="mt-3 text-body">所选日期暂无空房</h5>
-        <p>可以调整日期后再查询，或致电门店咨询其它安排。</p>
+        <p>可以换房型、调整日期后再查询；清洁消毒或维护中的房间不会出现在可订列表中。</p>
+        <a href="{% url 'web:room_list' %}" class="btn btn-outline-primary btn-sm mt-2">返回全部房间</a>
       </div>
     {% endif %}
   {% else %}
-    <div class="row g-4" id="roomGrid">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+      <div>
+        <h2 class="h5 mb-1" id="roomGrid">全部房间</h2>
+        <p class="small text-muted mb-0">共 {{ rooms|length }} 间可展示 · 点击房型卡片可筛选</p>
+      </div>
+      {% if request.GET.room_type or request.GET.species %}
+        <a href="{% url 'web:room_list' %}" class="small">清除筛选</a>
+      {% endif %}
+    </div>
+    <div class="row g-4">
       {% for room in rooms %}
         <div class="col-md-6 col-lg-4">{% include "web/_room_card.html" %}</div>
       {% empty %}
-        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
-        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
-        <div class="col-md-6 col-lg-4"><div class="skeleton skeleton-card"></div></div>
-        <div class="col-12"><div class="empty-state"><i class="bi bi-house"></i><p class="mt-2">暂无可展示的房间</p></div></div>
+        <div class="col-12">
+          <div class="ps-card empty-state">
+            <i class="bi bi-house"></i>
+            <p class="mt-2 mb-0">暂无符合条件的房间，试试其他宠物类型或房型</p>
+          </div>
+        </div>
       {% endfor %}
     </div>
   {% endif %}

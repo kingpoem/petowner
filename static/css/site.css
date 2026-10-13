@@ -273,6 +273,45 @@ h1, h2, h3, h4, h5 {
 .room-list-body .ps-card.hover-lift:nth-child(2) { animation-delay: 0.05s; }
 .room-list-body .ps-card.hover-lift:nth-child(3) { animation-delay: 0.1s; }
 
+.room-type-card {
+  display: block;
+  height: 100%;
+  padding: 1.25rem;
+  border-radius: 20px;
+  border: 1px solid var(--ps-border);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--ps-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.room-type-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ps-shadow-hover);
+  border-color: rgba(242, 112, 63, 0.35);
+  color: inherit;
+}
+
+.room-type-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  background: rgba(242, 112, 63, 0.12);
+  color: var(--ps-primary);
+  font-size: 1.15rem;
+}
+
+.room-card-desc {
+  line-height: 1.45;
+  min-height: 2.9em;
+}
+
+
 .ambient-panel {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -740,6 +779,56 @@ img[loading="lazy"] {
   max-width: 460px;
   margin: 3rem auto;
 }
+
+.ps-role-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.ps-role-option {
+  display: block;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ps-role-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ps-role-option span {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem;
+  border: 1.5px solid #ead7cb;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ps-role-option span strong {
+  font-size: 0.95rem;
+  color: #2b211c;
+}
+
+.ps-role-option span small {
+  font-size: 0.75rem;
+  color: var(--ps-muted, #6d5c52);
+  line-height: 1.35;
+}
+
+.ps-role-option input:checked + span {
+  border-color: var(--ps-primary, #e2632f);
+  background: #fff4ec;
+  box-shadow: 0 0 0 3px rgba(226, 99, 47, 0.12);
+}
+
+.ps-role-option:hover span {
+  border-color: #e7b89a;
+}
+
 
 .empty-state {
   text-align: center;

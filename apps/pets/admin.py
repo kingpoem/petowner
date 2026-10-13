@@ -47,10 +47,11 @@ class OrderHistoryInline(admin.TabularInline):
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
     list_display = ("name", "phone", "email", "pet_count", "has_account", "created_at")
-    search_fields = ("name", "phone")
+    search_fields = ("name", "phone", "email", "emergency_contact", "emergency_phone")
     readonly_fields = ("user", "created_at")
     inlines = [PetInline]
     actions = ("create_account",)
+    change_list_template = "admin/pets/owner/change_list.html"
 
     @admin.display(description="宠物数量")
     def pet_count(self, obj):

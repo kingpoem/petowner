@@ -20,7 +20,6 @@ from django.views.decorators.http import require_POST
 
 from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
-from apps.notifications.models import Notification
 from apps.pets.models import Pet
 from apps.rooms.models import Room
 from apps.rooms.pricing import quote
@@ -29,14 +28,11 @@ from .forms import (
     BookingForm,
     CancelForm,
     LoginForm,
-    PayForm,
     PetForm,
     ProfileForm,
     RegisterForm,
-    RescheduleForm,
     ReviewForm,
     SearchForm,
-    SmsPasswordResetForm,
 )
 
 
@@ -73,29 +69,32 @@ def _public_reviews():
 
 
 def _listed_rooms():
-    return Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
+    return Room.objects.filter(is_listed=True).exclude(status__in=Room.BLOCKED_STATUSES)
 
 
 def home(request):
     rating = Review.objects.aggregate(avg=Avg("rating"), total=Count("id"))
     rooms = _listed_rooms()
-    tomorrow = timezone.localdate() + timedelta(days=1)
     context = {
         "rooms": rooms[:6],
         "room_count": rooms.count(),
         "reviews": _public_reviews()[:6],
         "avg_rating": rating["avg"],
         "review_count": rating["total"],
-        "search_form": SearchForm(initial={"check_in": tomorrow, "check_out": tomorrow + timedelta(days=3)}),
     }
     return render(request, "web/home.html", context)
 
 
 def room_list(request):
-    form = SearchForm(request.GET or None)
+    tomorrow = timezone.localdate() + timedelta(days=1)
+    has_dates = bool(request.GET.get("check_in") and request.GET.get("check_out"))
+    form = SearchForm(
+        request.GET if has_dates else None,
+        initial={"check_in": tomorrow, "check_out": tomorrow + timedelta(days=3)},
+    )
     rooms = _listed_rooms()
     results, searched = None, False
-    if request.GET and form.is_valid():
+    if has_dates and form.is_valid():
         searched = True
         d = form.cleaned_data
         available = find_available_rooms(
@@ -106,12 +105,21 @@ def room_list(request):
             listed_only=True,
         )
         results = [(room, quote(room, d["check_in"], d["check_out"])) for room in available]
-    elif request.GET.get("species"):
-        rooms = rooms.filter(Q(pet_type=request.GET["species"]) | Q(pet_type=Room.PetType.ANY))
+    elif not searched:
+        if request.GET.get("species"):
+            rooms = rooms.filter(Q(pet_type=request.GET["species"]) | Q(pet_type=Room.PetType.ANY))
+        if request.GET.get("room_type"):
+            rooms = rooms.filter(room_type=request.GET["room_type"])
     return render(
         request,
         "web/room_list.html",
-        {"form": form, "rooms": rooms, "results": results, "searched": searched},
+        {
+            "form": form,
+            "rooms": rooms,
+            "results": results,
+            "searched": searched,
+            "room_type_guides": [{"key": key, **info} for key, info in Room.ROOM_TYPE_GUIDES.items()],
+        },
     )
 
 
@@ -136,6 +144,7 @@ def page(request, name):
         "terms": "web/pages/terms.html",
         "privacy": "web/pages/privacy.html",
         "credits": "web/pages/credits.html",
+        "faq": "web/pages/faq.html",
     }
     if name not in templates:
         raise Http404
@@ -151,11 +160,16 @@ def page(request, name):
 
 def register(request):
     if request.user.is_authenticated:
+        if request.user.is_staff and not hasattr(request.user, "owner_profile"):
+            return redirect("admin:index")
         return redirect("web:dashboard")
     form = RegisterForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        if form.cleaned_data["role"] == "store":
+            messages.success(request, "门店账号已创建，正在进入门店后台。")
+            return redirect("admin:index")
         messages.success(request, "注册成功！先为您的毛孩子建立档案吧。")
         return redirect("web:pet_create")
     return render(request, "web/account/register.html", {"form": form})
@@ -167,9 +181,19 @@ class LoginView(auth_views.LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        if self.request.user.is_staff and not hasattr(self.request.user, "owner_profile"):
+        role = self.request.POST.get("role") or self.request.GET.get("role")
+        if self.request.user.is_staff and (
+            role == "store" or not hasattr(self.request.user, "owner_profile")
+        ):
             return reverse("admin:index")
         return super().get_success_url()
+
+    def get_initial(self):
+        initial = super().get_initial()
+        role = self.request.GET.get("role")
+        if role in ("customer", "store"):
+            initial["role"] = role
+        return initial
 
 
 class BootstrapFormMixin:
@@ -216,15 +240,6 @@ class PasswordResetConfirmView(BootstrapFormMixin, auth_views.PasswordResetConfi
     success_url = reverse_lazy("web:password_reset_complete")
 
 
-def password_reset_sms(request):
-    form = SmsPasswordResetForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "密码已重置，请使用新密码登录")
-        return redirect("web:login")
-    return render(request, "web/account/password_reset_sms.html", {"form": form})
-
-
 class PasswordResetCompleteView(auth_views.PasswordResetCompleteView):
     template_name = "web/account/password_reset_status.html"
     extra_context = {"icon": "shield-check", "heading": "密码已重置", "body": "请使用新密码登录。", "show_login": True}
@@ -248,14 +263,27 @@ def dashboard(request):
     owner = request.owner
     orders = Order.objects.filter(pet__owner=owner).select_related("pet", "room")
     today = timezone.localdate()
+    active_orders = orders.filter(status__in=Order.ACTIVE_STATUSES).order_by("check_in")
     context = {
-        "active_orders": orders.filter(status__in=Order.ACTIVE_STATUSES).order_by("check_in"),
+        "active_orders": active_orders,
+        "active_count": active_orders.count(),
         "pets": owner.pets.all(),
-        "to_review": orders.filter(status=Order.Status.COMPLETED, review__isnull=True)[:3],
-        "notifications": request.user.notifications.filter(is_read=False)[:5],
+        "to_review": list(orders.filter(status=Order.Status.COMPLETED, review__isnull=True)[:5]),
         "vaccine_warnings": [p for p in owner.pets.all() if not p.vaccine_valid_through(today + timedelta(days=30))],
     }
     return render(request, "web/dashboard.html", context)
+
+
+@owner_required
+def review_list(request):
+    orders = Order.objects.filter(pet__owner=request.owner).select_related("pet", "room")
+    pending = orders.filter(status=Order.Status.COMPLETED, review__isnull=True).order_by("-check_out")
+    reviews = (
+        Review.objects.filter(order__pet__owner=request.owner)
+        .select_related("order__pet", "order__room")
+        .order_by("-created_at")
+    )
+    return render(request, "web/reviews/list.html", {"pending": pending, "reviews": reviews})
 
 
 @owner_required
@@ -347,36 +375,27 @@ def order_detail(request, order_no):
         "balance_due": order.balance_due,
         "cancel_form": CancelForm(),
     }
-    if order.can_cancel:
-        fee = order.cancellation_fee()
-        context.update(cancel_fee=fee, cancel_refund=paid - fee)
     return render(request, "web/orders/detail.html", context)
 
 
 @owner_required
 def order_pay(request, order_no):
     order = _owner_order(request, order_no)
-    if order.can_pay and order.pay_deadline and timezone.now() > order.pay_deadline:
-        order.cancel(f"超过 {settings.PAYMENT_TIMEOUT_MINUTES} 分钟未支付，系统自动取消")
-        messages.warning(request, "订单已超过支付时限并自动取消，请重新预约")
-        return redirect(order)
     if not order.can_pay:
         messages.info(request, "该订单无需支付")
         return redirect(order)
-    form = PayForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        from apps.payments.gateways import PaymentGatewayError
-        from apps.payments.services import CheckoutError, start_checkout
+    if request.method == "POST":
+        from apps.payments.services import CheckoutError, settle_payment, start_checkout
 
         try:
-            payment, session = start_checkout(order, form.cleaned_data["method"], request)
-        except (CheckoutError, PaymentGatewayError) as exc:
+            payment, _session = start_checkout(order, request)
+            settle_payment(payment, payment.provider_trade_no or f"SBX-{payment.transaction_no}")
+        except CheckoutError as exc:
             messages.error(request, str(exc))
             return redirect("web:order_pay", order_no=order.order_no)
-        if session.mode == "form" and session.form_html:
-            return HttpResponse(session.form_html)
-        return redirect(session.url or reverse("payments:checkout", args=[payment.pk]))
-    return render(request, "web/orders/pay.html", {"order": order, "form": form})
+        messages.success(request, "支付成功（演示环境，未产生真实扣款）")
+        return redirect(order)
+    return render(request, "web/orders/pay.html", {"order": order})
 
 
 @owner_required
@@ -384,56 +403,12 @@ def order_pay(request, order_no):
 def order_cancel(request, order_no):
     order = _owner_order(request, order_no)
     form = CancelForm(request.POST)
-    paid = order.net_paid
     try:
         order.cancel(form.data.get("reason", "")[:200])
-        refund = paid - order.cancel_fee
-        msg = "预约已取消" + (f"，¥{refund} 将原路退回" if refund > 0 else "")
-        messages.success(request, msg + (f"，扣除违约金 ¥{order.cancel_fee}" if order.cancel_fee else ""))
+        messages.success(request, "预约已取消")
     except ValidationError as exc:
         messages.error(request, "；".join(exc.messages))
     return redirect(order)
-
-
-@owner_required
-def order_reschedule(request, order_no):
-    order = _owner_order(request, order_no)
-    if not order.can_reschedule:
-        messages.info(request, "该订单已不能改期，如需调整请联系门店")
-        return redirect(order)
-    form = RescheduleForm(request.POST or None, order=order)
-    paid = order.net_paid
-    if request.method == "POST" and form.is_valid():
-        data = form.cleaned_data
-        try:
-            with transaction.atomic():
-                due = order.reschedule(data["room"], data["check_in"], data["check_out"])
-        except ValidationError as exc:
-            order.refresh_from_db()
-            form.apply_model_errors(exc)
-        else:
-            if due:
-                messages.warning(request, f"改期成功，请补付差价 ¥{due}")
-                return redirect("web:order_pay", order_no=order.order_no)
-            refund = paid - order.net_paid
-            messages.success(request, "改期成功" + (f"，差价 ¥{refund} 将原路退回" if refund > 0 else ""))
-            return redirect(order)
-    target = (order.room, order.check_in, order.check_out)
-    if form.is_bound and form.is_valid():
-        target = (form.cleaned_data["room"], form.cleaned_data["check_in"], form.cleaned_data["check_out"])
-    context = {"order": order, "form": form, **_quote_context(quote(*target), order)}
-    return render(request, "web/orders/reschedule.html", context)
-
-
-def _quote_context(booking_quote, order=None) -> dict:
-    """费用明细片段的上下文；传入订单时附带与已付金额的差额（改期场景）。"""
-    context = {"quote": booking_quote, "order": order}
-    if booking_quote is not None:
-        context["payable"] = booking_quote.total
-    if order is not None and booking_quote is not None:
-        diff = booking_quote.total - order.net_paid
-        context.update(paid=order.net_paid, top_up=max(diff, 0), refund=max(-diff, 0))
-    return context
 
 
 def _parse_quote(params):
@@ -450,10 +425,13 @@ def _parse_quote(params):
 
 @owner_required
 def quote_preview(request):
-    """预约/改期页面的费用明细片段，供前端在房间或日期变化时局部刷新。"""
-    order = _owner_order(request, request.GET["order"]) if request.GET.get("order") else None
+    """预约页费用明细片段。"""
     booking_quote = _parse_quote(request.GET)
-    return render(request, "web/orders/_quote.html", _quote_context(booking_quote, order))
+    return render(
+        request,
+        "web/orders/_quote.html",
+        {"quote": booking_quote, "payable": booking_quote.total if booking_quote else None},
+    )
 
 
 @owner_required
@@ -468,30 +446,3 @@ def order_review(request, order_no):
         messages.success(request, "感谢您的评价！")
         return redirect(order)
     return render(request, "web/orders/review.html", {"order": order, "form": form})
-
-
-# ---------- 通知 ----------
-
-
-@owner_required
-def notification_list(request):
-    page_obj = Paginator(request.user.notifications.all(), 15).get_page(request.GET.get("page"))
-    return render(request, "web/notifications.html", {"page_obj": page_obj})
-
-
-@owner_required
-def notification_open(request, pk):
-    note = get_object_or_404(Notification, pk=pk, user=request.user)
-    if not note.is_read:
-        note.is_read = True
-        note.save(update_fields=["is_read"])
-    if note.link and url_has_allowed_host_and_scheme(note.link, allowed_hosts={request.get_host()}):
-        return redirect(note.link)
-    return redirect("web:notifications")
-
-
-@owner_required
-@require_POST
-def notification_read_all(request):
-    request.user.notifications.filter(is_read=False).update(is_read=True)
-    return redirect("web:notifications")

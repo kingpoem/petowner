@@ -3,17 +3,22 @@
   <a href="{% url 'web:room_detail' room.pk %}{% if query %}?{{ query }}{% endif %}" class="cover d-block">
     <img src="{% image_url room size=800 %}" alt="{{ room.display_name }}" loading="lazy">
     <span class="tag badge rounded-pill text-bg-light shadow-sm">
-      {% if room.pet_type == 'cat' %}<i class="bi bi-emoji-heart-eyes me-1"></i>猫咪专属{% elif room.pet_type == 'dog' %}<i class="bi bi-emoji-smile me-1"></i>狗狗专属{% else %}<i class="bi bi-house-heart me-1"></i>猫狗皆可{% endif %}
+      {% if room.pet_type == 'cat' %}<i class="bi bi-emoji-heart-eyes me-1"></i>猫咪专属
+      {% elif room.pet_type == 'dog' %}<i class="bi bi-emoji-smile me-1"></i>狗狗专属
+      {% else %}<i class="bi bi-house-heart me-1"></i>猫狗皆可{% endif %}
     </span>
   </a>
   <div class="p-4 d-flex flex-column flex-grow-1">
     <div class="d-flex justify-content-between align-items-start mb-2">
       <div>
         <h5 class="mb-1">{{ room.display_name }}</h5>
-        <div class="small text-muted">{{ room.get_room_type_display }} · {% if room.area %}{{ room.area|floatformat:"-1" }}㎡ · {% endif %}可住 {{ room.capacity }} 只</div>
+        <div class="small text-muted">{{ room.get_room_type_display }} · {% if room.area %}{{ room.area|floatformat:"-1" }}㎡ · {% endif %}可住 {{ room.capacity }} 只 · {{ room.get_max_pet_size_display }}</div>
       </div>
       <div class="price text-end">¥{{ room.price|floatformat:"-2" }}<small>/晚</small></div>
     </div>
+    {% if room.description %}
+      <p class="small text-muted mb-2 room-card-desc">{{ room.description|truncatechars:72 }}</p>
+    {% endif %}
     <div class="mb-3">
       {% for a in room.amenity_list|slice:":4" %}<span class="amenity"><i class="bi bi-check2"></i>{{ a }}</span>{% endfor %}
     </div>
@@ -26,7 +31,7 @@
     {% endif %}
     <div class="mt-auto d-flex gap-2">
       <a href="{% url 'web:room_detail' room.pk %}{% if query %}?{{ query }}{% endif %}" class="btn btn-outline-primary btn-sm flex-fill">查看详情</a>
-      <a href="{% url 'web:booking_create' %}?room={{ room.pk }}{% if check_in %}&check_in={{ check_in|date:'Y-m-d' }}&check_out={{ check_out|date:'Y-m-d' }}{% endif %}" class="btn btn-primary btn-sm flex-fill">预约</a>
+      <a href="{% url 'web:booking_create' %}?room={{ room.pk }}{% if check_in %}&check_in={{ check_in|date:'Y-m-d' }}&check_out={{ check_out|date:'Y-m-d' }}{% endif %}" class="btn btn-primary btn-sm flex-fill">选定下单</a>
     </div>
   </div>
 </div>

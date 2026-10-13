@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}常见问题{% endblock %}
+
+{% block content %}
+<div class="room-list-hero">
+  <div class="container">
+    <div class="page-header mb-0">
+      <p class="eyebrow text-primary mb-2">{{ SITE.name }}</p>
+      <h1>常见问题</h1>
+      <p class="text-muted mb-0">入住须知、定价说明与服务答疑。本店<strong>仅接收猫与狗</strong>，暂不提供兔、鸟及其他异宠寄养。</p>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="wrap-md mx-auto">
+    <div class="ps-card p-3 mb-4 small bg-primary-soft border-0" role="note">
+      <i class="bi bi-info-circle me-1 text-primary"></i>
+      目前只开放<strong>猫</strong>、<strong>狗</strong>寄养；请按宠物体型与性格选择合适房型。如有疑问可致电 {{ SITE.phone }}。
+    </div>
+
+    <h2 class="h5 mb-3">入住与预约</h2>
+    <div class="accordion faq mb-5" id="faqStay">
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#fq1">你们接收哪些宠物？</button></h2>
+        <div id="fq1" class="accordion-collapse collapse show" data-bs-parent="#faqStay">
+          <div class="accordion-body text-muted">目前<strong>只接收猫和狗</strong>。兔、鸟、龙猫等异宠暂不开放寄养。猫狗按体型、性格匹配标准间、豪华间、套房或 VIP 套房，有攻击性的宠物须订单宠房。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fq2">入住需要准备什么？</button></h2>
+        <div id="fq2" class="accordion-collapse collapse" data-bs-parent="#faqStay">
+          <div class="accordion-body text-muted">请携带有效期内的疫苗本、宠物日常口粮（可减少换粮应激）以及熟悉的小毯子或玩具。疫苗有效期需覆盖整个寄养期间，可在「我的宠物」中提前登记。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fq3">可以取消或修改预约吗？</button></h2>
+        <div id="fq3" class="accordion-collapse collapse" data-bs-parent="#faqStay">
+          <div class="accordion-body text-muted">入住前可在订单页随时取消，已支付金额原路全额退回。如需更换日期，可取消后重新预约，或致电 {{ SITE.phone }} 由门店协助调整。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fq4">房间满了怎么办？</button></h2>
+        <div id="fq4" class="accordion-collapse collapse" data-bs-parent="#faqStay">
+          <div class="accordion-body text-muted">可在「寄养房间」页换其他房型或调整入住离店日期后再查询。清洁消毒或维护中的房间不会出现在可订列表。也可致电 {{ SITE.phone }} 由门店协助安排。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#fq5">宠物在寄养期间生病了怎么办？</button></h2>
+        <div id="fq5" class="accordion-collapse collapse" data-bs-parent="#faqStay">
+          <div class="accordion-body text-muted">护理师每天观察精神、食欲和排便情况。一旦记录为异常，系统会立即向您发送提醒，门店也会电话联系您，并在征得同意后送往合作宠物医院。</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="h5 mb-3" id="pricing">定价与房位</h2>
+    <div class="accordion faq" id="faqPrice">
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq1">价格怎么算？</button></h2>
+        <div id="pq1" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">按<strong>房型日价 × 晚数</strong>计费，离店当天不计费。房间页标价为基础日价；查询空房或下单后可看到所选日期的合计金额。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq2">不同房型贵在哪里？</button></h2>
+        <div id="pq2" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">
+            <ul class="mb-0 ps-3">
+              <li><strong>标准间</strong>：传统犬舍/独立笼位风格，含基础喂养与定时遛放（猫区为陪玩），性价比最高。</li>
+              <li><strong>豪华间</strong>：更大空间与更好床具，一对一互动更多，适中大型犬。</li>
+              <li><strong>套房</strong>：实墙独立房、更安静，常含窗景与摄像头，适合易应激宠物。</li>
+              <li><strong>VIP套房</strong>：最大面积，可含阳光区/独立小院，支持多宠同住与增值护理。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq3">体型、多宠同住怎么收费？</button></h2>
+        <div id="pq3" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">每间房有「最大接待体型」与「房间容量」。大型犬通常需订豪华间及以上；容量大于 1 的房间可同住多只猫或狗（同一家庭、性格合拍），有攻击性的宠物只能订单宠房。第二只是否加收以房间说明与下单页为准。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq4">节假日会涨价吗？</button></h2>
+        <div id="pq4" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">春节、国庆等旺季房位紧张，门店可能上调日价或提前锁房。查询结果里若某晚标有节假日规则，会单独显示。热门档期建议尽早预约。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq5">为什么显示有房却订不了？</button></h2>
+        <div id="pq5" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">可订不仅看「有没有空床」，还要同时满足：猫/狗分区、体型上限、整段入住–离店连续可用，以及房间不是「清洁消毒 / 维护停用」。多日订单还会避免碎片空档导致看似有空却接不了长住。</div>
+        </div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pq6">房费里包含哪些服务？</button></h2>
+        <div id="pq6" class="accordion-collapse collapse" data-bs-parent="#faqPrice">
+          <div class="accordion-body text-muted">基础房费通常包含：按家中习惯喂养、每日健康观察、房间清洁消毒、狗狗每日遛弯或猫咪互动陪玩、护理动态推送。用药协助、接送、额外美容等可能另计，下单前可在房间详情或致电 {{ SITE.phone }} 确认。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

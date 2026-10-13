@@ -10,8 +10,10 @@ from django.utils import timezone
 from apps.bookings.models import Order
 from apps.pets.models import Owner, Pet, Species
 from apps.rooms.models import Room
+from apps.stores.staff import create_store_user, ensure_store_groups
 
 PASSWORD = "Test-pass-123"
+STORE_PASSWORD = PASSWORD
 _seq = count(1)
 
 
@@ -54,6 +56,28 @@ def make_store(**fields):
         "is_default": False,
     }
     return Store.objects.create(**{**defaults, **fields})
+
+
+def make_store_user(role: str = "front", **fields):
+    """
+    注入门店员工账号。
+    role: front | carer | admin（超级用户）
+    可用字段：username、password、name、email
+    """
+    n = next(_seq)
+    username = fields.pop("username", f"store{n:04d}")
+    password = fields.pop("password", STORE_PASSWORD)
+    name = fields.pop("name", f"店员{n}")
+    email = fields.pop("email", "")
+    ensure_store_groups()
+    return create_store_user(
+        username,
+        password,
+        name=name,
+        email=email,
+        role=role,
+        superuser=role == "admin",
+    )
 
 
 def make_room(**fields) -> Room:

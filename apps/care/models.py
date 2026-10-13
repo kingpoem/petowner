@@ -6,8 +6,6 @@ from django.utils import timezone
 
 from apps.bookings.models import Order
 from apps.images import OptimizedImageField
-from apps.notifications.models import Notification
-from apps.notifications.services import notify_owner
 
 
 class ServiceRecord(models.Model):
@@ -37,7 +35,7 @@ class ServiceRecord(models.Model):
     created_at = models.DateTimeField("记录时间", auto_now_add=True)
 
     class Meta:
-        verbose_name = "服务记录"
+        verbose_name = "日常服务反馈"
         verbose_name_plural = verbose_name
         ordering = ["-feeding_time"]
 
@@ -80,27 +78,11 @@ class ServiceRecord(models.Model):
             raise ValidationError({"order": "只能为寄养中或已完成的订单登记服务记录"})
 
     def _after_create(self):
-        pet = self.order.pet
         if self.needs_attention:
             detail = self.health_note or self.health_status or self.care_content
+            pet = self.order.pet
             pet.health_status = f"寄养中异常：{detail}"[:200]
             pet.save(update_fields=["health_status"])
-            notify_owner(
-                pet.owner,
-                f"{pet.name} 健康状况提醒",
-                f"护理人员 {self.staff} 记录到异常：{detail}。我们会持续观察并与您联系。",
-                self.order.get_absolute_url(),
-                Notification.Level.DANGER,
-                sms_event="health",
-            )
-        else:
-            notify_owner(
-                pet.owner,
-                f"{pet.name} 有新的护理动态",
-                self.care_content[:80],
-                self.order.get_absolute_url(),
-                sms_event="care",
-            )
 
 
 class Review(models.Model):
@@ -115,7 +97,7 @@ class Review(models.Model):
     created_at = models.DateTimeField("评价时间", auto_now_add=True)
 
     class Meta:
-        verbose_name = "服务评价"
+        verbose_name = "顾客评价回复"
         verbose_name_plural = verbose_name
         ordering = ["-created_at"]
 

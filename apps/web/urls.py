@@ -17,7 +17,6 @@ urlpatterns = [
     path("account/password/", views.PasswordChangeView.as_view(), name="password_change"),
     path("account/password/reset/", views.PasswordResetView.as_view(), name="password_reset"),
     path("account/password/reset/sent/", views.PasswordResetDoneView.as_view(), name="password_reset_done"),
-    path("account/password/reset/sms/", views.password_reset_sms, name="password_reset_sms"),
     path(
         "account/password/reset/<uidb64>/<token>/",
         views.PasswordResetConfirmView.as_view(),
@@ -33,11 +32,8 @@ urlpatterns = [
     path("me/orders/<str:order_no>/", views.order_detail, name="order_detail"),
     path("me/orders/<str:order_no>/pay/", views.order_pay, name="order_pay"),
     path("me/orders/<str:order_no>/cancel/", views.order_cancel, name="order_cancel"),
-    path("me/orders/<str:order_no>/change/", views.order_reschedule, name="order_reschedule"),
     path("me/orders/<str:order_no>/review/", views.order_review, name="order_review"),
+    path("me/reviews/", views.review_list, name="review_list"),
     path("book/", views.booking_create, name="booking_create"),
     path("book/quote/", views.quote_preview, name="quote_preview"),
-    path("me/notifications/", views.notification_list, name="notifications"),
-    path("me/notifications/<int:pk>/", views.notification_open, name="notification_open"),
-    path("me/notifications/read-all/", views.notification_read_all, name="notification_read_all"),
 ]

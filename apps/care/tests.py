@@ -1,7 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from apps.notifications.models import Notification
 from apps.testing import make_order, make_owner, make_pet
 
 from .models import Review, ServiceRecord
@@ -24,16 +23,7 @@ class ServiceRecordTests(TestCase):
         self.assertTrue(record.code.startswith("S"))
         self.assertEqual(record.code, f"S{record.pk:05d}")
 
-    def test_normal_record_sends_info_notification(self):
-        ServiceRecord.objects.create(
-            order=self.order, staff="小王", care_content="早餐吃完", health_status="良好", appetite="全部吃完"
-        )
-        note = Notification.objects.filter(user=self.owner.user).latest("created_at")
-        self.assertEqual(note.level, Notification.Level.INFO)
-        self.assertEqual(note.body, "早餐吃完")
-        self.assertEqual(note.link, self.order.get_absolute_url())
-
-    def test_abnormal_record_flags_pet_and_alerts_owner(self):
+    def test_abnormal_record_flags_pet(self):
         record = ServiceRecord.objects.create(
             order=self.order,
             staff="小王",
@@ -44,21 +34,12 @@ class ServiceRecordTests(TestCase):
         self.assertTrue(record.needs_attention)
         self.order.pet.refresh_from_db()
         self.assertIn("轻微腹泻", self.order.pet.health_status)
-        note = Notification.objects.filter(user=self.owner.user).latest("created_at")
-        self.assertEqual(note.level, Notification.Level.DANGER)
 
     def test_poor_appetite_needs_attention(self):
         record = ServiceRecord(
             order=self.order, staff="小王", care_content="晚餐", appetite="未进食", health_status="良好"
         )
         self.assertTrue(record.needs_attention)
-
-    def test_editing_does_not_renotify(self):
-        record = ServiceRecord.objects.create(order=self.order, staff="小王", care_content="遛弯")
-        total = Notification.objects.count()
-        record.care_content = "遛弯 30 分钟"
-        record.save()
-        self.assertEqual(Notification.objects.count(), total)
 
 
 class ReviewTests(TestCase):

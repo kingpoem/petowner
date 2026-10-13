@@ -1,16 +1,12 @@
-from datetime import date, timedelta
-
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.template.response import TemplateResponse
 from django.urls import path
-from django.utils import timezone
 
 from apps.care.models import ServiceRecord
 from apps.pets.models import Species
 
-from .calendar import build_calendar
 from .models import Order, Payment, find_available_rooms
 
 
@@ -32,7 +28,7 @@ class ServiceRecordInline(admin.StackedInline):
 class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 0
-    fields = ("transaction_no", "provider_trade_no", "kind", "method", "status", "amount", "created_at")
+    fields = ("transaction_no", "kind", "method", "status", "amount", "created_at")
     readonly_fields = fields
     can_delete = False
 
@@ -56,7 +52,6 @@ class AvailableRoomForm(forms.Form):
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
         "order_no",
-        "store",
         "pet",
         "owner_phone",
         "room",
@@ -68,7 +63,7 @@ class OrderAdmin(admin.ModelAdmin):
         "status",
         "source",
     )
-    list_filter = ("store", "status", "payment_status", "source", "room__room_type", "check_in")
+    list_filter = ("status", "payment_status", "source", "room__room_type", "check_in")
     search_fields = ("order_no", "pet__code", "pet__name", "pet__owner__name", "pet__owner__phone")
     autocomplete_fields = ("pet", "room", "store")
     readonly_fields = (
@@ -104,7 +99,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_select_related = ("pet__owner", "room", "store")
     date_hierarchy = "check_in"
     inlines = [ServiceRecordInline, PaymentInline]
-    actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders", "cancel_orders_full_refund")
+    actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders")
     change_list_template = "admin/bookings/order/change_list.html"
 
     @admin.display(description="主人电话")
@@ -122,21 +117,15 @@ class OrderAdmin(admin.ModelAdmin):
                 initial[key] = request.GET[key]
         return initial
 
-    def get_object(self, request, object_id, from_field=None):
-        obj = super().get_object(request, object_id, from_field)
-        if obj is not None:
-            obj._rescheduling = obj.can_reschedule
-        return obj
-
     def save_model(self, request, obj, form, change):
-        moved = change and {"room", "check_in", "check_out"} & set(form.changed_data)
-        if not (moved and obj.payment_status != Order.PaymentStatus.UNPAID):
-            return super().save_model(request, obj, form, change)
-        target = (obj.room, obj.check_in, obj.check_out)
-        obj.refresh_from_db(fields=["room", "check_in", "check_out"])
-        due = obj.reschedule(*target)
-        if due:
-            self.message_user(request, f"改期后需向顾客补收差价 ¥{due}", messages.WARNING)
+        super().save_model(request, obj, form, change)
+        if change and {"room", "check_in", "check_out"} & set(form.changed_data):
+            obj._sync_payment_status()
+            Order.objects.filter(pk=obj.pk).update(payment_status=obj.payment_status)
+            if obj.can_pay:
+                self.message_user(request, f"订单已修改，顾客仍需支付 ¥{obj.balance_due}", messages.WARNING)
+            else:
+                self.message_user(request, "订单房间/日期已更新，金额已重算", messages.SUCCESS)
 
     def _run_transition(self, request, queryset, method: str, label: str, **kwargs):
         ok, failed = 0, []
@@ -151,7 +140,7 @@ class OrderAdmin(admin.ModelAdmin):
         for msg in failed:
             self.message_user(request, msg, messages.ERROR)
 
-    @admin.action(description="前台收款（现金，含补差价）")
+    @admin.action(description="一键收款（标记已付）")
     def mark_paid(self, request, queryset):
         self._run_transition(request, queryset, "mark_paid", "收款")
 
@@ -163,15 +152,9 @@ class OrderAdmin(admin.ModelAdmin):
     def finish_boarding(self, request, queryset):
         self._run_transition(request, queryset, "finish_boarding", "办理离店")
 
-    @admin.action(description="取消预约（按取消政策退款）")
+    @admin.action(description="取消预约")
     def cancel_orders(self, request, queryset):
         self._run_transition(request, queryset, "cancel", "取消预约", reason="门店操作取消")
-
-    @admin.action(description="取消预约并全额退款（门店原因）")
-    def cancel_orders_full_refund(self, request, queryset):
-        self._run_transition(
-            request, queryset, "cancel", "取消并全额退款", reason="门店原因取消，全额退款", waive_fee=True
-        )
 
     def get_urls(self):
         custom = [
@@ -180,36 +163,12 @@ class OrderAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.available_rooms_view),
                 name="bookings_order_available_rooms",
             ),
-            path("calendar/", self.admin_site.admin_view(self.calendar_view), name="bookings_order_calendar"),
         ]
         return custom + super().get_urls()
 
-    def calendar_view(self, request):
+    def available_rooms_view(self, request):
         if not request.user.has_perm("bookings.view_order"):
             raise PermissionDenied
-        today = timezone.localdate()
-        try:
-            start = date.fromisoformat(request.GET.get("start") or today.isoformat())
-        except ValueError:
-            start = today
-        try:
-            nights = int(request.GET.get("nights") or 14)
-        except ValueError:
-            nights = 14
-        cal = build_calendar(start, nights)
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "房态日历",
-            "opts": self.model._meta,
-            "cal": cal,
-            "prev": start - timedelta(days=7),
-            "next": start + timedelta(days=7),
-            "nights": max(7, min(nights, 31)),
-            "can_add": request.user.has_perm("bookings.add_order"),
-        }
-        return TemplateResponse(request, "admin/bookings/order/calendar.html", context)
-
-    def available_rooms_view(self, request):
         form = AvailableRoomForm(request.GET or None)
         rooms = None
         if form.is_valid():
@@ -219,7 +178,7 @@ class OrderAdmin(admin.ModelAdmin):
             rooms = [(room, room.price * days) for room in rooms]
         context = {
             **self.admin_site.each_context(request),
-            "title": "可用房间查询",
+            "title": "查空房开单",
             "opts": self.model._meta,
             "form": form,
             "rooms": rooms,
@@ -229,9 +188,9 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("transaction_no", "order", "kind", "method", "status", "amount", "provider_trade_no", "created_at")
+    list_display = ("transaction_no", "order", "kind", "method", "status", "amount", "created_at")
     list_filter = ("kind", "method", "status", "created_at")
-    search_fields = ("transaction_no", "provider_trade_no", "order__order_no")
+    search_fields = ("transaction_no", "order__order_no")
     readonly_fields = (
         "transaction_no",
         "provider_trade_no",

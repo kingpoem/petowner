@@ -1,0 +1,36 @@
+{% load i18n %}
+
+{% if app_list %}
+<section class="ps-app-grid" aria-label="业务模块">
+  {% for app in app_list %}
+  <article class="ps-app-card app-{{ app.app_label }}">
+    <header class="ps-app-card-head">
+      <h3><a href="{{ app.app_url }}" class="section">{% if app.name == app.app_label|capfirst %}{% translate app.name %}{% else %}{{ app.name }}{% endif %}</a></h3>
+    </header>
+    <ul class="ps-app-models">
+      {% for model in app.models %}
+      <li class="ps-app-model">
+        <div class="ps-app-model-main">
+          {% if model.admin_url %}
+          <a href="{{ model.admin_url }}">{{ model.name }}</a>
+          {% else %}
+          <span>{{ model.name }}</span>
+          {% endif %}
+        </div>
+        <div class="ps-app-model-actions">
+          {% if model.add_url %}
+          <a class="ps-app-add" href="{{ model.add_url }}">新建</a>
+          {% endif %}
+          {% if model.admin_url %}
+          <a class="viewlink" href="{{ model.admin_url }}">查看</a>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<p>{% translate "You don't have permission to view or edit anything." %}</p>
+{% endif %}

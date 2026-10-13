@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div class="ps-order-help">
+  <strong>寄养房间：</strong>
+  支持增删改查；列表中可直接<strong>改价</strong>。
+  勾选后可用动作设为<strong>清洁消毒</strong>、<strong>维护停用</strong>或恢复空闲。
+</div>
+{{ block.super }}
+{% endblock %}

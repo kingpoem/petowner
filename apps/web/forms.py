@@ -3,19 +3,24 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import models
 from django.utils import timezone
 
-from apps.bookings.models import Order, Payment
+from apps.bookings.models import Order
 from apps.care.models import Review
 from apps.pets.models import Owner, Pet, Species
 from apps.rooms.models import Room
-from apps.security.forms import LoginGuardMixin, SmsCodeField, SmsVerifyMixin
+from apps.stores.staff import create_store_user, ensure_store_groups
 
 PHONE_RE = re.compile(r"^1\d{10}$")
 DATE_INPUT = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+
+ROLE_CUSTOMER = "customer"
+ROLE_STORE = "store"
+ROLE_CHOICES = (
+    (ROLE_CUSTOMER, "顾客"),
+    (ROLE_STORE, "门店"),
+)
 
 
 class BootstrapMixin:
@@ -57,12 +62,15 @@ def validate_new_password(form, first: str, second: str, user=None) -> str:
     return p2
 
 
-class RegisterForm(SmsVerifyMixin, BootstrapMixin, forms.Form):
-    sms_purpose = "register"
-
+class RegisterForm(BootstrapMixin, forms.Form):
+    role = forms.ChoiceField(
+        label="账号类型",
+        choices=ROLE_CHOICES,
+        initial=ROLE_CUSTOMER,
+        widget=forms.RadioSelect,
+    )
     name = forms.CharField(label="您的称呼", max_length=50)
     phone = forms.CharField(label="手机号", max_length=11, widget=forms.TextInput(attrs={"inputmode": "tel"}))
-    sms_code = SmsCodeField()
     email = forms.EmailField(label="邮箱（选填）", required=False)
     password1 = forms.CharField(label="设置密码", widget=forms.PasswordInput, strip=False)
     password2 = forms.CharField(label="确认密码", widget=forms.PasswordInput, strip=False)
@@ -72,7 +80,8 @@ class RegisterForm(SmsVerifyMixin, BootstrapMixin, forms.Form):
         phone = clean_phone(self.cleaned_data["phone"])
         if get_user_model().objects.filter(username=phone).exists():
             raise ValidationError("该手机号已注册，请直接登录")
-        if Owner.objects.filter(phone=phone).exists():
+        role = self.data.get("role", ROLE_CUSTOMER)
+        if role == ROLE_CUSTOMER and Owner.objects.filter(phone=phone).exists():
             raise ValidationError("该手机号已在门店登记，请联系门店为您开通线上账号")
         return phone
 
@@ -81,53 +90,53 @@ class RegisterForm(SmsVerifyMixin, BootstrapMixin, forms.Form):
 
     def save(self):
         data = self.cleaned_data
-        user = get_user_model().objects.create_user(
+        User = get_user_model()
+        if data["role"] == ROLE_STORE:
+            ensure_store_groups()
+            return create_store_user(
+                data["phone"],
+                data["password1"],
+                name=data["name"],
+                email=data["email"],
+                role="front",
+            )
+        user = User.objects.create_user(
             username=data["phone"], password=data["password1"], email=data["email"], first_name=data["name"]
         )
         Owner.objects.create(user=user, name=data["name"], phone=data["phone"], email=data["email"])
         return user
 
 
-class LoginForm(LoginGuardMixin, BootstrapMixin, AuthenticationForm):
+class LoginForm(BootstrapMixin, AuthenticationForm):
+    role = forms.ChoiceField(
+        label="登录身份",
+        choices=ROLE_CHOICES,
+        initial=ROLE_CUSTOMER,
+        widget=forms.RadioSelect,
+    )
     error_messages = {
-        "invalid_login": "手机号或密码不正确",
+        "invalid_login": "账号或密码不正确",
         "inactive": "该账号已停用，请联系门店",
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["username"].label = "手机号"
-        self.fields["username"].widget.attrs.update(placeholder="请输入注册手机号", inputmode="tel")
+        self.fields["username"].label = "账号"
+        self.fields["username"].widget.attrs.update(placeholder="手机号或门店账号", inputmode="tel")
+        # 把角色选项排到最前
+        self.order_fields(["role", "username", "password"])
 
-
-class SmsPasswordResetForm(SmsVerifyMixin, BootstrapMixin, forms.Form):
-    sms_purpose = "reset"
-
-    phone = forms.CharField(label="注册手机号", max_length=11, widget=forms.TextInput(attrs={"inputmode": "tel"}))
-    sms_code = SmsCodeField()
-    new_password1 = forms.CharField(label="新密码", widget=forms.PasswordInput, strip=False)
-    new_password2 = forms.CharField(label="确认新密码", widget=forms.PasswordInput, strip=False)
-
-    def clean_phone(self):
-        return clean_phone(self.cleaned_data["phone"])
-
-    def clean_new_password2(self):
-        user = get_user_model().objects.filter(username=self.cleaned_data.get("phone")).first()
-        return validate_new_password(self, "new_password1", "new_password2", user)
-
-    def clean(self):
-        data = super().clean()
-        if not self.errors:
-            self.user = get_user_model().objects.filter(username=data["phone"], is_active=True).first()
-            if self.user is None:
-                self.add_error("sms_code", "短信验证码错误或已过期")
-        return data
-
-    def save(self):
-        self.user.set_password(self.cleaned_data["new_password1"])
-        self.user.save(update_fields=["password"])
-        cache.delete(f"login-failures:{self.user.username}")
-        return self.user
+    def confirm_login_allowed(self, user):
+        super().confirm_login_allowed(user)
+        role = self.cleaned_data.get("role", ROLE_CUSTOMER)
+        has_owner = hasattr(user, "owner_profile")
+        if role == ROLE_STORE:
+            if not user.is_staff:
+                raise ValidationError("该账号不是门店账号，请改选「顾客」登录", code="invalid_login")
+        elif not has_owner:
+            if user.is_staff:
+                raise ValidationError("该账号是门店账号，请改选「门店」登录", code="invalid_login")
+            raise ValidationError("该账号未开通顾客档案，请重新注册", code="invalid_login")
 
 
 class ProfileForm(BootstrapMixin, forms.ModelForm):
@@ -174,7 +183,10 @@ class DateRangeMixin:
 
 
 class SearchForm(BootstrapMixin, DateRangeMixin, forms.Form):
-    species = forms.ChoiceField(label="宠物类型", choices=Species.choices)
+    species = forms.ChoiceField(
+        label="宠物类型",
+        choices=[("", "请选择宠物类型"), *Species.choices],
+    )
     check_in = forms.DateField(label="入住日期", widget=DATE_INPUT)
     check_out = forms.DateField(label="离店日期", widget=DATE_INPUT)
     room_type = forms.ChoiceField(label="房型", choices=[("", "不限房型"), *Room.RoomType.choices], required=False)
@@ -203,41 +215,11 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
 
 
 def bookable_rooms():
-    return Room.objects.filter(is_listed=True).exclude(status=Room.Status.MAINTENANCE)
+    return Room.objects.filter(is_listed=True).exclude(status__in=Room.BLOCKED_STATUSES)
 
 
 def room_label(room: Room) -> str:
     return f"{room.display_name} · {room.get_pet_type_display()} · ¥{room.price.normalize():f}/晚"
-
-
-class RescheduleForm(BootstrapMixin, DateRangeMixin, forms.Form):
-    room = forms.ModelChoiceField(label="寄养房间", queryset=Room.objects.none(), empty_label=None)
-    check_in = forms.DateField(label="入住日期", widget=DATE_INPUT)
-    check_out = forms.DateField(label="离店日期", widget=DATE_INPUT)
-
-    def __init__(self, *args, order: Order, **kwargs):
-        kwargs.setdefault("initial", {"room": order.room_id, "check_in": order.check_in, "check_out": order.check_out})
-        super().__init__(*args, **kwargs)
-        species = order.pet.species
-        rooms = bookable_rooms().filter(models.Q(pet_type=Room.PetType.ANY) | models.Q(pet_type=species))
-        self.fields["room"].queryset = rooms | Room.objects.filter(pk=order.room_id)
-        self.fields["room"].label_from_instance = room_label
-
-    def apply_model_errors(self, exc: ValidationError):
-        if not hasattr(exc, "error_dict"):
-            self.add_error(None, exc)
-            return
-        for field, errors in exc.message_dict.items():
-            self.add_error(field if field in self.fields else None, errors)
-
-
-class PayForm(forms.Form):
-    method = forms.ChoiceField(
-        label="支付方式",
-        choices=[(Payment.Method.WECHAT, "微信支付"), (Payment.Method.ALIPAY, "支付宝")],
-        initial=Payment.Method.WECHAT,
-        widget=forms.RadioSelect,
-    )
 
 
 class CancelForm(BootstrapMixin, forms.Form):

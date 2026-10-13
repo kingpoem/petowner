@@ -5,8 +5,8 @@
 {% block content %}
 <div class="container">
   <div class="page-header">
-    <h1>在线预约</h1>
-    <p class="text-muted mb-0">选择宠物、房间与日期，系统将实时校验空房、疫苗与房间适配</p>
+    <h1>生成寄养订单</h1>
+    <p class="text-muted mb-0">确认宠物、房间与入住离店日期后提交，系统会校验空房与疫苗</p>
   </div>
   <form method="post" class="row g-4" novalidate data-quote-url="{% url 'web:quote_preview' %}" data-quote-target="#quoteBox">
     {% csrf_token %}
@@ -28,8 +28,8 @@
       <div class="ps-card p-4 sticky-lg-top" style="top: 90px;">
         <h5 class="mb-3">费用明细</h5>
         <div id="quoteBox" class="quote-live" aria-live="polite">{% include "web/orders/_quote.html" %}</div>
-        <button class="btn btn-primary btn-lg w-100 mt-3">提交预约</button>
-        <p class="small text-muted mt-3 mb-0"><i class="bi bi-shield-check me-1"></i>提交后请在订单页完成支付；入住日前可免费取消或改期</p>
+        <button class="btn btn-primary btn-lg w-100 mt-3">生成订单</button>
+        <p class="small text-muted mt-3 mb-0"><i class="bi bi-shield-check me-1"></i>提交后请完成支付以锁定房间；入住前可在寄养记录中取消</p>
       </div>
     </div>
   </form>

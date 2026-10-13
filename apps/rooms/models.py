@@ -11,17 +11,54 @@ class Room(models.Model):
     class RoomType(models.TextChoices):
         STANDARD = "standard", "标准间"
         DELUXE = "deluxe", "豪华间"
-        SUITE = "suite", "套间"
+        SUITE = "suite", "套房"
+        VIP = "vip", "VIP套房"
+
+    # 官网房型说明：对应真实寄养里的犬舍 / 豪华房 / 独立套房 / 带院 VIP
+    ROOM_TYPE_GUIDES = {
+        RoomType.STANDARD: {
+            "title": "标准间",
+            "subtitle": "传统犬舍 / 独立笼位风格",
+            "blurb": "空间紧凑实用，含基础喂养、清洁与定时遛放（或猫区陪玩）。适合短期寄养、预算友好，以及性格稳定的中小型宠物。",
+            "price_hint": "约 ¥50–120 / 晚",
+            "icon": "bi-house",
+        },
+        RoomType.DELUXE: {
+            "title": "豪华间",
+            "subtitle": "更大空间 · 更多一对一照料",
+            "blurb": "面积与床具升级，活动区更宽敞，互动时间更充足。适合中大型犬，或需要更多活动空间、不愿合笼的宠物。",
+            "price_hint": "约 ¥120–250 / 晚",
+            "icon": "bi-house-heart",
+        },
+        RoomType.SUITE: {
+            "title": "套房",
+            "subtitle": "实墙独立房 · 安静私密",
+            "blurb": "独立房间（非铁丝笼位），常配备窗景、摄像头与恒温新风。适合胆小、老年、易应激，或主人希望实时查看动态的宠物。",
+            "price_hint": "约 ¥150–350 / 晚",
+            "icon": "bi-door-open",
+        },
+        RoomType.VIP: {
+            "title": "VIP套房",
+            "subtitle": "最大面积 · 可含独立小院",
+            "blurb": "顶级空间与增值护理（阳光区、独立小院、多宠同住等按房说明）。适合长住、家庭多宠同行，或节假日希望锁定优质房位的主人。",
+            "price_hint": "约 ¥300+ / 晚",
+            "icon": "bi-stars",
+        },
+    }
 
     class PetType(models.TextChoices):
         DOG = "dog", "狗"
         CAT = "cat", "猫"
-        ANY = "any", "通用"
+        ANY = "any", "猫狗皆可"
 
     class Status(models.TextChoices):
         AVAILABLE = "available", "空闲"
         FULL = "full", "已满"
+        CLEANING = "cleaning", "清洁消毒"
         MAINTENANCE = "maintenance", "维护停用"
+
+    # 不可对外预约的状态（看似空房但实际不可用）
+    BLOCKED_STATUSES = (Status.CLEANING, Status.MAINTENANCE)
 
     store = models.ForeignKey(
         "stores.Store",
@@ -78,8 +115,8 @@ class Room(models.Model):
         return self.orders.filter(status=Order.Status.CHECKED_IN).count()
 
     def refresh_status(self):
-        """根据入住中订单数刷新空闲/已满；维护停用状态需人工解除。"""
-        if self.status == self.Status.MAINTENANCE:
+        """根据入住中订单数刷新空闲/已满；清洁消毒与维护停用需人工解除。"""
+        if self.status in self.BLOCKED_STATUSES:
             return
         new_status = self.Status.FULL if self.current_occupancy() >= self.capacity else self.Status.AVAILABLE
         if new_status != self.status:

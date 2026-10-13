@@ -8,8 +8,6 @@ from django.db import models, transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.notifications.models import Notification
-from apps.notifications.services import notify_owner
 from apps.pets.models import Owner, Pet
 from apps.rooms.models import Room
 from apps.rooms.pricing import quote
@@ -75,11 +73,10 @@ class Order(models.Model):
             self.store_id = getattr(self.room, "store_id", None) or Room.objects.filter(pk=self.room_id).values_list(
                 "store_id", flat=True
             ).first()
-        if self.status == self.Status.PENDING and self.payment_status == self.PaymentStatus.UNPAID:
+        if self.status == self.Status.PENDING and self.room_id and self.check_in and self.check_out:
             q = quote(self.room, self.check_in, self.check_out)
-            extra = getattr(self, "_extra_discount", Decimal("0.00")) or Decimal("0.00")
-            self.amount = max(q.total - extra, Decimal("0.00"))
-            self.discount = q.discount + extra
+            self.amount = q.total
+            self.discount = q.discount
         super().save(*args, **kwargs)
         if not self.order_no:
             self.order_no = f"O{timezone.localdate():%Y%m%d}{self.pk:05d}"
@@ -118,25 +115,6 @@ class Order(models.Model):
         return self.status != self.Status.CANCELLED and self.balance_due > 0
 
     @property
-    def can_reschedule(self) -> bool:
-        return self.status == self.Status.PENDING and self.check_in > timezone.localdate()
-
-    def cancellation_fee(self) -> Decimal:
-        """入住日当天及之后取消，扣除前 LATE_CANCEL_NIGHTS 晚房费（不超过已付金额）。"""
-        paid = self.net_paid
-        if paid <= 0 or timezone.localdate() < self.check_in or settings.LATE_CANCEL_NIGHTS <= 0:
-            return Decimal("0.00")
-        nights = quote(self.room, self.check_in, self.check_out).nights[: settings.LATE_CANCEL_NIGHTS]
-        return min(sum((n.price for n in nights), Decimal("0.00")), self.amount, paid)
-
-    @property
-    def pay_deadline(self):
-        """线上未支付订单的支付截止时间；门店录入或已支付订单返回 None。"""
-        if self.source != self.Source.ONLINE or self.payment_status != self.PaymentStatus.UNPAID or not self.created_at:
-            return None
-        return self.created_at + timedelta(minutes=settings.PAYMENT_TIMEOUT_MINUTES)
-
-    @property
     def can_cancel(self) -> bool:
         return self.status == self.Status.PENDING
 
@@ -153,17 +131,6 @@ class Order(models.Model):
             raise ValidationError({"check_in": "入住时间不能早于今天"})
         if self.days > settings.MAX_BOARDING_DAYS:
             raise ValidationError({"check_out": f"单次寄养最长 {settings.MAX_BOARDING_DAYS} 天"})
-        rescheduling = getattr(self, "_rescheduling", False)
-        if not self._state.adding and self.payment_status != self.PaymentStatus.UNPAID and not rescheduling:
-            original = Order.objects.get(pk=self.pk)
-            if (original.room_id, original.check_in, original.check_out) != (
-                self.room_id,
-                self.check_in,
-                self.check_out,
-            ):
-                raise ValidationError("已付款订单请通过“改期”功能修改房间或日期，以便自动结算差价")
-        if rescheduling and self.check_in < timezone.localdate():
-            raise ValidationError({"check_in": "入住时间不能早于今天"})
         if not self.is_active:
             return
         problem = room_problem_for_pet(self.room, self.pet, self.check_out)
@@ -178,9 +145,6 @@ class Order(models.Model):
         if self.status not in allowed:
             raise ValidationError(f"订单当前状态为「{self.get_status_display()}」，不能{action}")
 
-    def _notify(self, title: str, body: str, level=Notification.Level.INFO):
-        notify_owner(self.owner, title, body, self.get_absolute_url(), level)
-
     def _sync_payment_status(self):
         paid = self.net_paid
         if paid <= 0:
@@ -191,29 +155,18 @@ class Order(models.Model):
         else:
             self.payment_status = self.PaymentStatus.PARTIAL
 
-    def _refund(self, amount: Decimal) -> "Payment | None":
-        from apps.payments.services import gateway_refund
-
-        return gateway_refund(self, amount)
-
     @transaction.atomic
     def pay(self, method: str) -> "Payment":
-        """入账一笔已成功的收款（门店收款、演示数据、或渠道回调确认后）。
-
-        顾客在线支付请走 apps.payments.services.start_checkout，由异步通知调用 settle_payment。
-        """
+        """入账一笔已成功的收款（门店收款或演示一键支付）。"""
         if not self.can_pay:
             raise ValidationError("该订单当前无需支付")
         due = self.balance_due
-        top_up = self.payment_status == self.PaymentStatus.PARTIAL
         payment = Payment.objects.create(
             order=self, method=method, kind=Payment.Kind.PAY, amount=due, status=Payment.Status.SUCCESS
         )
         self._sync_payment_status()
         self.paid_at = timezone.now()
         self.save(update_fields=["payment_status", "paid_at", "updated_at"])
-        title = "补款成功" if top_up else "支付成功"
-        self._notify(title, f"订单 {self} 已支付 ¥{due}，期待 {self.pet.name} 的到来。", "success")
         return payment
 
     def mark_paid(self):
@@ -221,55 +174,18 @@ class Order(models.Model):
 
     @transaction.atomic
     def cancel(self, reason: str = "", waive_fee: bool = False):
+        """取消预约并释放房间；已付款记一笔退款流水（无真实渠道）。"""
         self._require_status(self.Status.PENDING, action="取消预约")
-        fee = Decimal("0.00") if waive_fee else self.cancellation_fee()
+        from apps.payments.services import record_refund
+
         paid = self.net_paid
-        refund = self._refund(paid - fee)
+        if paid > 0:
+            record_refund(self, paid)
         self.status = self.Status.CANCELLED
         self.cancel_reason = reason
-        self.cancel_fee = fee
-        if paid > 0:
-            # 订单金额改为实际留存的违约金，使“已付 = 应付”，对账与营收统计口径一致
-            self.amount = fee
-            self._sync_payment_status()
-        self.save(update_fields=["status", "cancel_reason", "cancel_fee", "amount", "payment_status", "updated_at"])
-        detail = f"，¥{refund.amount} 已原路退回" if refund else ""
-        if fee:
-            detail += f"（入住当天取消，扣除首晚房费 ¥{fee}）"
-        self._notify("预约已取消", f"订单 {self} 已取消{detail}。", "warning")
-
-    @transaction.atomic
-    def reschedule(self, room: Room, check_in, check_out) -> Decimal:
-        """改期或换房；已付款项多退少补，返回需补付的金额（多退时为 0）。"""
-        if not self.can_reschedule:
-            raise ValidationError("仅入住日之前的已预约订单可以改期")
-        list(Room.objects.select_for_update().filter(pk=room.pk))
-        old = (self.room_id, self.check_in, self.check_out)
-        self.room, self.check_in, self.check_out = room, check_in, check_out
-        if old == (self.room_id, self.check_in, self.check_out):
-            raise ValidationError("房间和日期均未变化")
-        self._rescheduling = True
-        try:
-            self.full_clean()
-        finally:
-            self._rescheduling = False
-        new_quote = quote(room, check_in, check_out)
-        self.amount, self.discount = new_quote.total, new_quote.discount
-        refund = self._refund(self.net_paid - self.amount)
+        self.cancel_fee = Decimal("0.00")
         self._sync_payment_status()
-        self.save()
-        due = self.balance_due
-        if refund:
-            money = f"差价 ¥{refund.amount} 已原路退回"
-        elif due and self.payment_status == self.PaymentStatus.PARTIAL:
-            money = f"需补差价 ¥{due}"
-        else:
-            money = f"订单金额 ¥{self.amount}"
-        self._notify(
-            "预约已改期",
-            f"{self.pet.name} 改为 {check_in:%m月%d日} 入住 {room.display_name}，{check_out:%m月%d日} 离店；{money}。",
-        )
-        return due
+        self.save(update_fields=["status", "cancel_reason", "cancel_fee", "payment_status", "updated_at"])
 
     @transaction.atomic
     def start_boarding(self):
@@ -278,48 +194,24 @@ class Order(models.Model):
         self.checked_in_at = timezone.now()
         self.save(update_fields=["status", "checked_in_at", "updated_at"])
         self.room.refresh_status()
-        self._notify("已办理入住", f"{self.pet.name} 已入住 {self.room.display_name}，可随时查看护理动态。")
 
     @transaction.atomic
     def finish_boarding(self):
         self._require_status(self.Status.CHECKED_IN, action="办理离店")
-        today = timezone.localdate()
-        released_early = today < self.check_out
         self.status = self.Status.COMPLETED
         self.checked_out_at = timezone.now()
-        refund = None
-        if released_early:
-            self.check_out = max(today, self.check_in + timedelta(days=1))
-            if settings.EARLY_CHECKOUT_REFUND:
-                stayed = quote(self.room, self.check_in, self.check_out)
-                if stayed.total < self.amount:
-                    self.amount, self.discount = stayed.total, stayed.discount
-                    refund = self._refund(self.net_paid - self.amount)
-                    self._sync_payment_status()
-        self.save(
-            update_fields=[
-                "status",
-                "checked_out_at",
-                "check_out",
-                "amount",
-                "discount",
-                "payment_status",
-                "updated_at",
-            ]
-        )
+        self.save(update_fields=["status", "checked_out_at", "updated_at"])
         self.room.refresh_status()
-        body = f"{self.pet.name} 已平安离店，欢迎为本次服务评价。"
-        if refund:
-            body += f"未入住的 {self.check_out:%m月%d日} 起房费 ¥{refund.amount} 已原路退回。"
-        self._notify("寄养已完成", body, "success")
 
 
 class Payment(models.Model):
     class Method(models.TextChoices):
-        WECHAT = "wechat", "微信支付"
-        ALIPAY = "alipay", "支付宝"
+        ONLINE = "online", "在线支付"
         CASH = "cash", "门店现金"
         CARD = "card", "门店刷卡"
+        # 兼容历史流水
+        WECHAT = "wechat", "微信支付"
+        ALIPAY = "alipay", "支付宝"
 
     class Kind(models.TextChoices):
         PAY = "pay", "收款"
@@ -367,8 +259,9 @@ class Payment(models.Model):
 
 def room_problem_for_pet(room: Room, pet: Pet, check_out) -> tuple[str, str] | None:
     """返回 (字段, 原因)；房间可接待该宠物时返回 None。"""
-    if room.status == Room.Status.MAINTENANCE:
-        return "room", "该房间正在维护停用，无法预约"
+    if room.status in Room.BLOCKED_STATUSES:
+        label = room.get_status_display()
+        return "room", f"该房间当前为「{label}」状态，无法预约"
     if not room.accepts(pet.species):
         return "room", f"该房间不适用于{pet.get_species_display()}"
     if pet.size > room.max_pet_size:
@@ -420,7 +313,7 @@ def find_available_rooms(
     store=None,
 ):
     """返回时间段内可预约的房间；传入 pet 时同时校验体型、性格等接待条件。"""
-    rooms = Room.objects.exclude(status=Room.Status.MAINTENANCE).filter(
+    rooms = Room.objects.exclude(status__in=Room.BLOCKED_STATUSES).filter(
         models.Q(pet_type=Room.PetType.ANY) | models.Q(pet_type=species)
     )
     if store is not None:
@@ -444,18 +337,3 @@ def find_available_rooms(
             result.append(room)
     return result
 
-
-def expire_unpaid_orders() -> int:
-    """取消超时未支付的线上订单并释放房间；返回取消数量。"""
-    cutoff = timezone.now() - timedelta(minutes=settings.PAYMENT_TIMEOUT_MINUTES)
-    stale = Order.objects.filter(
-        source=Order.Source.ONLINE,
-        status=Order.Status.PENDING,
-        payment_status=Order.PaymentStatus.UNPAID,
-        created_at__lt=cutoff,
-    ).select_related("pet__owner", "room")
-    count = 0
-    for order in stale:
-        order.cancel(f"超过 {settings.PAYMENT_TIMEOUT_MINUTES} 分钟未支付，系统自动取消")
-        count += 1
-    return count

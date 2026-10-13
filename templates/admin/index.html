@@ -1,37 +1,6 @@
 {% extends "admin/index.html" %}
-{% load admin_dashboard %}
 
-{% block content %}
-{% dashboard_stats as s %}
-<div id="ps-dashboard">
-  <nav class="ps-shortcuts" aria-label="常用功能">
-    {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
-    {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_available_rooms' %}">可用房间查询</a>{% endif %}
-    {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_add' %}">门店录入订单</a>{% endif %}
-  </nav>
-  <div class="ps-dash">
-    <div class="ps-kpi"><div class="l">今日待入住</div><div class="v">{{ s.arrivals|length }}</div></div>
-    <div class="ps-kpi"><div class="l">今日待离店</div><div class="v">{{ s.departures|length }}</div></div>
-    <div class="ps-kpi"><div class="l">在住 / 总床位</div><div class="v">{{ s.boarding }} / {{ s.capacity }}</div></div>
-    <div class="ps-kpi"><div class="l">入住率</div><div class="v">{{ s.occupancy }}%</div></div>
-    <div class="ps-kpi"><div class="l">本月净收入（元）</div><div class="v">{{ s.month_revenue }}</div></div>
-    <div class="ps-kpi"><div class="l">待收款订单</div><div class="v">{{ s.unpaid }}</div></div>
-    <div class="ps-kpi"><div class="l">平均评分 / 待回复</div><div class="v">{{ s.avg_rating|floatformat:1|default:"-" }} / {{ s.pending_reviews }}</div></div>
-  </div>
-  <div class="ps-panels">
-    <div class="ps-panel">
-      <h3>今日入住</h3>
-      <ul>{% for o in s.arrivals %}<li><a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }} → {{ o.room.number }}</a>（{{ o.get_payment_status_display }}）</li>{% empty %}<li>暂无</li>{% endfor %}</ul>
-    </div>
-    <div class="ps-panel">
-      <h3>今日（及逾期）离店</h3>
-      <ul>{% for o in s.departures %}<li><a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }} · {{ o.room.number }}</a>（应离店 {{ o.check_out|date:"m-d" }}）</li>{% empty %}<li>暂无</li>{% endfor %}</ul>
-    </div>
-    <div class="ps-panel">
-      <h3 class="ps-alert">近 3 天健康异常</h3>
-      <ul>{% for r in s.alerts %}<li class="ps-alert"><a href="{% url 'admin:bookings_order_change' r.order_id %}">{{ r.order.pet.name }}</a>：{{ r.health_note|default:r.care_content|truncatechars:30 }}</li>{% empty %}<li>无异常记录</li>{% endfor %}</ul>
-    </div>
-  </div>
-</div>
-{{ block.super }}
-{% endblock %}
+{% block content_title %}<h1>门店功能</h1>{% endblock %}
+
+{# 去掉右侧「最近动作」 #}
+{% block sidebar %}{% endblock %}

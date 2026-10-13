@@ -10,8 +10,8 @@ PawStay 宠物寄养 —— 项目概述（课程精简版）
   4. 寄养服务与评价
 
 产品由两部分组成：
-  官网（顾客端）    查房、预约、支付、改期/取消、查看护理动态、评价
-  运营后台（Admin） 管理主人/宠物/房间/订单、登记护理、查看评价与房态
+  官网（顾客端）    查房、预约、一键支付、取消、查看护理动态、评价
+  门店后台（/store/）按四模块管理主人宠物 / 房间 / 订单 / 护理评价
 
 
 二、技术选型
@@ -21,7 +21,7 @@ PawStay 宠物寄养 —— 项目概述（课程精简版）
   框架        Django 6.1（官网自研模板，后台 Django Admin）
   前端        Bootstrap 5.3 + Bootstrap Icons（本地托管）
   数据库      MySQL 8+（utf8mb4）
-  支付        默认沙箱收银台；可配置微信/支付宝
+  支付        沙箱一键已付（演示环境，无真实渠道）
   包管理      uv
   命令入口    GNU Make
 
@@ -29,14 +29,14 @@ PawStay 宠物寄养 —— 项目概述（课程精简版）
 三、系统模块
 ------------
   apps/pets           宠物主人与宠物档案
-  apps/rooms          寄养房间与逐晚报价（含连住折扣）
-  apps/bookings       订单、空房校验、收退款、改期/取消、房态日历
+  apps/rooms          寄养房间与按晚报价
+  apps/bookings       订单、空房校验、收退款流水
   apps/care           护理记录与服务评价
-  apps/notifications  站内通知
-  apps/payments       沙箱 / 微信 / 支付宝收银台
-  apps/security       图形验证码、短信验证码、登录限流
+  apps/payments       沙箱一键支付
   apps/stores         单店模型（房间/订单归属）
   apps/web            官网与个人中心
+  apps/security       账号辅助（课程版注册为手机号+密码）
+  apps/notifications  遗留 app（未接入业务）
 
 
 四、用户角色

@@ -5,7 +5,7 @@ MANAGE = uv run python manage.py
 export PYTHONUTF8 := 1
 
 .DEFAULT_GOAL := help
-.PHONY: help install env initdb makemigrations migrate setup run seed reset-demo superuser expire test lint format check \
+.PHONY: help install env initdb makemigrations migrate setup run seed reset-demo superuser test lint format check \
 	deploy-check launch-accept collectstatic images shell clean
 
 help: ## 显示所有命令
@@ -44,9 +44,6 @@ reset-demo: setup ## 清空数据库与上传文件后重新写入演示数据
 
 superuser: ## 交互式创建管理员账号
 	$(MANAGE) createsuperuser
-
-expire: ## 取消超时未支付订单
-	$(MANAGE) expire_orders
 
 images: ## 按 scripts/fetch_images.py 中的清单下载授权图片
 	uv run python scripts/fetch_images.py download

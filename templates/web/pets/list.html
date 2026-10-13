@@ -5,8 +5,11 @@
 
 {% block main %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">我的宠物</h1>
-  <a class="btn btn-primary" href="{% url 'web:pet_create' %}"><i class="bi bi-plus-lg me-1"></i>添加宠物</a>
+  <div>
+    <h1 class="h3 mb-1">宠物信息登记</h1>
+    <p class="text-muted small mb-0">建立档案后即可选房下单</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'web:pet_create' %}"><i class="bi bi-plus-lg me-1"></i>登记宠物</a>
 </div>
 <div class="row g-4">
   {% for pet in pets %}
@@ -33,7 +36,7 @@
       </div>
       <div class="border-top px-4 py-2 d-flex justify-content-end gap-2">
         <a class="btn btn-sm btn-light" href="{% url 'web:pet_edit' pet.pk %}"><i class="bi bi-pencil me-1"></i>编辑</a>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'web:booking_create' %}?pet={{ pet.pk }}">为 TA 预约</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'web:room_list' %}">去选房</a>
         {% if not pet.order_count %}
           <form method="post" action="{% url 'web:pet_delete' pet.pk %}" data-confirm="确定删除 {{ pet.name }} 的档案吗？">{% csrf_token %}
             <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from apps.pets.models import PetSize
 from apps.testing import days, make_order, make_pet, make_room
@@ -9,7 +9,6 @@ from .models import Room
 from .pricing import quote
 
 
-@override_settings(LONG_STAY_DAYS=7, LONG_STAY_RATE=0.9)
 class PricingTests(TestCase):
     def setUp(self):
         self.room = make_room(price=Decimal("100"))
@@ -21,17 +20,17 @@ class PricingTests(TestCase):
         self.assertEqual(q.discount, 0)
         self.assertEqual(q.surcharged_nights, [])
 
-    def test_long_stay_discount(self):
+    def test_longer_stay_is_price_times_nights(self):
         q = quote(self.room, days(1), days(8))
         self.assertEqual(q.subtotal, Decimal("700.00"))
-        self.assertEqual(q.discount, Decimal("70.00"))
-        self.assertEqual(q.total, Decimal("630.00"))
-        self.assertIn("9 折", q.discount_label)
+        self.assertEqual(q.discount, 0)
+        self.assertEqual(q.total, Decimal("700.00"))
+        self.assertEqual(q.discount_label, "")
 
     def test_order_amount_uses_quote(self):
         order = make_order(room=self.room, start=1, nights=7)
-        self.assertEqual(order.amount, Decimal("630.00"))
-        self.assertEqual(order.discount, Decimal("70.00"))
+        self.assertEqual(order.amount, Decimal("700.00"))
+        self.assertEqual(order.discount, 0)
 
 
 class RoomModelTests(TestCase):
@@ -60,3 +59,11 @@ class RoomModelTests(TestCase):
         room = make_room(status=Room.Status.MAINTENANCE)
         room.refresh_status()
         self.assertEqual(room.status, Room.Status.MAINTENANCE)
+
+    def test_cleaning_status_is_sticky(self):
+        room = make_room(status=Room.Status.CLEANING)
+        room.refresh_status()
+        self.assertEqual(room.status, Room.Status.CLEANING)
+
+    def test_room_type_guides_cover_all_types(self):
+        self.assertEqual(set(Room.ROOM_TYPE_GUIDES), set(Room.RoomType.values))

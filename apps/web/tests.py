@@ -2,25 +2,20 @@ import io
 import re
 import shutil
 import tempfile
-from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils import timezone
 from PIL import Image
 
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review
 from apps.images import thumbnail_name, thumbnail_url
-from apps.notifications.models import Notification
-from apps.security import sms
-from apps.testing import PASSWORD, days, make_order, make_owner, make_pet, make_room
+from apps.testing import PASSWORD, days, make_order, make_owner, make_pet, make_room, make_store_user
 
 
 class PublicPagesTests(TestCase):
@@ -35,6 +30,7 @@ class PublicPagesTests(TestCase):
             reverse("web:page", args=["terms"]),
             reverse("web:page", args=["privacy"]),
             reverse("web:page", args=["credits"]),
+            reverse("web:page", args=["faq"]),
             reverse("web:login"),
             reverse("web:register"),
             reverse("web:password_reset"),
@@ -71,23 +67,10 @@ class PublicPagesTests(TestCase):
         self.assertNotContains(self.client.get(reverse("web:home")), "不想公开的评价")
 
 
-def issue_sms(test: TestCase, phone: str, purpose: str = "register") -> str:
-    cache.delete(f"sms:sent:{purpose}:{phone}")
-    with test.assertLogs("apps.security.sms", "WARNING"):
-        return sms.issue_code(phone, purpose)
-
-
-def solve_captcha(client) -> str:
-    client.get(reverse("security:captcha"))
-    return client.session["captcha"]["text"]
-
-
 class AccountTests(TestCase):
-    def setUp(self):
-        cache.clear()
-
     def _register(self, **overrides):
         data = {
+            "role": "customer",
             "name": "小明",
             "phone": "13711112222",
             "password1": "Sunny-day-2026",
@@ -95,41 +78,7 @@ class AccountTests(TestCase):
             "agree": "on",
             **overrides,
         }
-        if "sms_code" not in data and len(data["phone"]) == 11:
-            data["sms_code"] = issue_sms(self, data["phone"])
         return self.client.post(reverse("web:register"), data)
-
-    def test_register_requires_valid_sms_code(self):
-        issue_sms(self, "13711112222")
-        self.assertContains(self._register(sms_code="000000"), "短信验证码错误或已过期")
-        self.assertFalse(get_user_model().objects.exists())
-
-    def test_sms_code_survives_other_form_errors(self):
-        code = issue_sms(self, "13711112222")
-        self.assertContains(self._register(sms_code=code, password2="other"), "两次输入的密码不一致")
-        response = self._register(sms_code=code)
-        self.assertRedirects(response, reverse("web:pet_create"), fetch_redirect_response=False)
-
-    def test_password_reset_by_sms(self):
-        owner = make_owner()
-        url = reverse("web:password_reset_sms")
-        data = {"phone": owner.phone, "new_password1": "Brand-new-2026", "new_password2": "Brand-new-2026"}
-        self.assertContains(self.client.post(url, {**data, "sms_code": "123456"}), "短信验证码错误或已过期")
-        response = self.client.post(url, {**data, "sms_code": issue_sms(self, owner.phone, "reset")})
-        self.assertRedirects(response, reverse("web:login"), fetch_redirect_response=False)
-        self.assertTrue(self.client.login(username=owner.phone, password="Brand-new-2026"))
-
-    def test_login_requires_captcha_after_failures(self):
-        owner = make_owner()
-        login_url = reverse("web:login")
-        for _ in range(3):
-            self.client.post(login_url, {"username": owner.phone, "password": "wrong"})
-        self.assertContains(self.client.get(login_url), "图形验证码")
-        response = self.client.post(login_url, {"username": owner.phone, "password": PASSWORD, "captcha": "XXXX"})
-        self.assertContains(response, "图形验证码错误")
-        captcha = solve_captcha(self.client)
-        response = self.client.post(login_url, {"username": owner.phone, "password": PASSWORD, "captcha": captcha})
-        self.assertRedirects(response, reverse("web:dashboard"), fetch_redirect_response=False)
 
     def test_register_creates_owner_and_logs_in(self):
         response = self._register()
@@ -137,6 +86,14 @@ class AccountTests(TestCase):
         user = get_user_model().objects.get(username="13711112222")
         self.assertEqual(user.owner_profile.name, "小明")
         self.assertEqual(self.client.get(reverse("web:dashboard")).status_code, 200)
+
+    def test_register_store_goes_to_admin(self):
+        response = self._register(role="store", phone="13711113333", name="店员小李")
+        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
+        user = get_user_model().objects.get(username="13711113333")
+        self.assertTrue(user.is_staff)
+        self.assertFalse(hasattr(user, "owner_profile"))
+        self.assertTrue(user.groups.filter(name="前台").exists())
 
     def test_register_validation(self):
         response = self._register(phone="123")
@@ -153,26 +110,24 @@ class AccountTests(TestCase):
 
     def test_login_redirects_by_role(self):
         owner = make_owner()
-        response = self.client.post(reverse("web:login"), {"username": owner.phone, "password": PASSWORD})
+        response = self.client.post(
+            reverse("web:login"), {"role": "customer", "username": owner.phone, "password": PASSWORD}
+        )
         self.assertRedirects(response, reverse("web:dashboard"), fetch_redirect_response=False)
         self.client.logout()
-        get_user_model().objects.create_superuser("boss", "", PASSWORD)
-        response = self.client.post(reverse("web:login"), {"username": "boss", "password": PASSWORD})
-        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
-
-    def test_login_throttled_after_repeated_failures(self):
-        owner = make_owner()
-        for attempt in range(5):
-            data = {"username": owner.phone, "password": "wrong"}
-            if attempt >= 3:
-                data["captcha"] = solve_captcha(self.client)
-            self.client.post(reverse("web:login"), data)
+        make_store_user(role="admin", username="boss", password=PASSWORD)
         response = self.client.post(
-            reverse("web:login"),
-            {"username": owner.phone, "password": PASSWORD, "captcha": solve_captcha(self.client)},
+            reverse("web:login"), {"role": "store", "username": "boss", "password": PASSWORD}
         )
-        self.assertContains(response, "登录失败次数过多")
-        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertRedirects(response, reverse("admin:index"), fetch_redirect_response=False)
+        self.assertTrue(reverse("admin:index").startswith("/store/"))
+
+    def test_login_rejects_wrong_role(self):
+        owner = make_owner()
+        response = self.client.post(
+            reverse("web:login"), {"role": "store", "username": owner.phone, "password": PASSWORD}
+        )
+        self.assertContains(response, "不是门店账号")
 
     def test_login_required_keeps_query(self):
         url = reverse("web:booking_create") + "?room=1&check_in=2030-01-01"
@@ -203,7 +158,7 @@ class AccountTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_staff_without_owner_sent_to_admin(self):
-        staff = get_user_model().objects.create_user("clerk", password=PASSWORD, is_staff=True)
+        staff = make_store_user(role="front", username="clerk", password=PASSWORD)
         self.client.force_login(staff)
         self.assertRedirects(
             self.client.get(reverse("web:dashboard")), reverse("admin:index"), fetch_redirect_response=False
@@ -223,12 +178,20 @@ class OwnerAreaTests(TestCase):
             "pet_list",
             "pet_create",
             "order_list",
-            "notifications",
+            "review_list",
             "profile",
             "password_change",
         ]:
             with self.subTest(name=name):
                 self.assertEqual(self.client.get(reverse(f"web:{name}")).status_code, 200)
+
+    def test_review_hub_shows_pending(self):
+        order = make_order(pet=self.pet, start=0)
+        order.start_boarding()
+        order.finish_boarding()
+        response = self.client.get(reverse("web:review_list"))
+        self.assertContains(response, "待评价")
+        self.assertContains(response, order.order_no)
 
     def test_pet_crud(self):
         data = {
@@ -289,10 +252,8 @@ class OwnerAreaTests(TestCase):
         self.assertEqual(order.source, Order.Source.ONLINE)
         self.assertRedirects(response, reverse("web:order_pay", args=[order.order_no]), fetch_redirect_response=False)
 
-        pay = self.client.post(reverse("web:order_pay", args=[order.order_no]), {"method": "alipay"})
-        self.assertIn("/pay/sandbox/", pay["Location"])
-        payment = order.payments.get()
-        self.client.post(pay["Location"], {"token": self.client.session[f"pay_token:{payment.pk}"]})
+        pay = self.client.post(reverse("web:order_pay", args=[order.order_no]))
+        self.assertRedirects(pay, order.get_absolute_url(), fetch_redirect_response=False)
         order.refresh_from_db()
         self.assertEqual(order.payment_status, Order.PaymentStatus.PAID)
         self.assertContains(self.client.get(order.get_absolute_url()), "完成支付")
@@ -311,55 +272,6 @@ class OwnerAreaTests(TestCase):
             with self.subTest(params=bad):
                 self.assertContains(self.client.get(url, bad), "选择房间与日期后显示逐晚价格")
 
-    def test_quote_fragment_shows_reschedule_difference(self):
-        order = make_order(pet=self.pet, room=self.room, start=2, nights=2)
-        order.pay(Payment.Method.WECHAT)
-        params = {"order": order.order_no, "room": self.room.pk, "check_in": days(2), "check_out": days(5)}
-        self.assertContains(self.client.get(reverse("web:quote_preview"), params), "需补差价")
-        stranger = make_order(start=2)
-        params["order"] = stranger.order_no
-        self.assertEqual(self.client.get(reverse("web:quote_preview"), params).status_code, 404)
-
-    def test_reschedule_flow(self):
-        order = make_order(pet=self.pet, room=self.room, start=2, nights=2)
-        order.pay(Payment.Method.WECHAT)
-        url = reverse("web:order_reschedule", args=[order.order_no])
-        self.assertContains(self.client.get(order.get_absolute_url()), "改期 / 换房")
-        self.assertContains(self.client.get(url), "无需补退差价")
-
-        response = self.client.post(url, {"room": self.room.pk, "check_in": days(2), "check_out": days(5)})
-        self.assertRedirects(response, reverse("web:order_pay", args=[order.order_no]), fetch_redirect_response=False)
-        self.assertContains(self.client.get(response["Location"]), "¥100.00")
-        pay = self.client.post(response["Location"], {"method": "alipay"})
-        self.assertIn("/pay/sandbox/", pay["Location"])
-        sandbox = pay["Location"]
-        payment_id = int(sandbox.rstrip("/").rsplit("/", 1)[-1])
-        self.client.post(sandbox, {"token": self.client.session[f"pay_token:{payment_id}"]})
-        order.refresh_from_db()
-        self.assertEqual((order.amount, order.payment_status), (Decimal("300.00"), Order.PaymentStatus.PAID))
-
-        response = self.client.post(url, {"room": self.room.pk, "check_in": days(3), "check_out": days(4)})
-        self.assertRedirects(response, order.get_absolute_url(), fetch_redirect_response=False)
-        order.refresh_from_db()
-        self.assertEqual(order.net_paid, Decimal("100.00"))
-
-    def test_reschedule_errors_are_shown(self):
-        order = make_order(pet=self.pet, room=self.room, start=2, nights=2)
-        make_order(room=self.room, start=6, nights=2)
-        url = reverse("web:order_reschedule", args=[order.order_no])
-        response = self.client.post(url, {"room": self.room.pk, "check_in": days(6), "check_out": days(7)})
-        self.assertContains(response, "该房间在所选时间段已满")
-        order.refresh_from_db()
-        self.assertEqual(order.check_in, days(2))
-        today_order = make_order(pet=make_pet(owner=self.owner), start=0)
-        response = self.client.get(reverse("web:order_reschedule", args=[today_order.order_no]))
-        self.assertRedirects(response, today_order.get_absolute_url(), fetch_redirect_response=False)
-
-    def test_cancel_modal_previews_late_fee(self):
-        order = make_order(pet=self.pet, room=self.room, start=0, nights=2)
-        order.pay(Payment.Method.WECHAT)
-        self.assertContains(self.client.get(order.get_absolute_url()), "扣除首晚房费 <strong>¥100.00</strong>")
-
     def test_booking_errors_are_shown(self):
         make_order(room=self.room, start=1, nights=2)
         response = self.client.post(
@@ -367,15 +279,6 @@ class OwnerAreaTests(TestCase):
             {"pet": self.pet.pk, "room": self.room.pk, "check_in": days(1), "check_out": days(3)},
         )
         self.assertContains(response, "该房间在所选时间段已满")
-
-    @override_settings(PAYMENT_TIMEOUT_MINUTES=30)
-    def test_expired_order_cannot_be_paid(self):
-        order = make_order(pet=self.pet, room=self.room, source=Order.Source.ONLINE)
-        Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(minutes=45))
-        self.client.post(reverse("web:order_pay", args=[order.order_no]), {"method": "wechat"})
-        order.refresh_from_db()
-        self.assertEqual(order.status, Order.Status.CANCELLED)
-        self.assertFalse(order.payments.exists())
 
     def test_review_after_completion(self):
         order = make_order(pet=self.pet, start=0)
@@ -388,29 +291,11 @@ class OwnerAreaTests(TestCase):
         )
         self.assertEqual(order.review.rating, 4)
 
-    def test_notification_open_marks_read_and_blocks_external_links(self):
-        safe = Notification.objects.create(user=self.owner.user, title="a", link=reverse("web:order_list"))
-        evil = Notification.objects.create(user=self.owner.user, title="b", link="https://evil.example.com/")
-        self.assertRedirects(
-            self.client.get(reverse("web:notification_open", args=[safe.pk])),
-            reverse("web:order_list"),
-            fetch_redirect_response=False,
-        )
-        safe.refresh_from_db()
-        self.assertTrue(safe.is_read)
-        self.assertRedirects(
-            self.client.get(reverse("web:notification_open", args=[evil.pk])),
-            reverse("web:notifications"),
-            fetch_redirect_response=False,
-        )
-        self.client.post(reverse("web:notification_read_all"))
-        self.assertFalse(Notification.objects.filter(user=self.owner.user, is_read=False).exists())
-
 
 def make_photo(size=(3000, 2000), orientation=6, fmt="JPEG") -> SimpleUploadedFile:
     image = Image.new("RGB", size, (200, 120, 80))
     exif = Image.Exif()
-    exif[0x0112] = orientation  # Orientation：6 = 需顺时针旋转 90°
+    exif[0x0112] = orientation
     exif[0x010F] = "PhoneMaker"
     buffer = io.BytesIO()
     image.save(buffer, fmt, exif=exif)
@@ -472,7 +357,7 @@ class ImageProcessingTests(TestCase):
 
 class AdminTests(TestCase):
     def setUp(self):
-        self.admin = get_user_model().objects.create_superuser("boss", "", PASSWORD)
+        self.admin = make_store_user(role="admin", username="boss", password=PASSWORD)
         self.client.force_login(self.admin)
         order = make_order(start=0)
         order.start_boarding()
@@ -484,25 +369,22 @@ class AdminTests(TestCase):
             reverse("admin:bookings_order_changelist"),
             reverse("admin:bookings_order_change", args=[self.order.pk]),
             reverse("admin:bookings_order_add"),
-            reverse("admin:bookings_payment_changelist"),
             reverse("admin:pets_owner_changelist"),
             reverse("admin:pets_pet_changelist"),
             reverse("admin:rooms_room_changelist"),
             reverse("admin:care_servicerecord_changelist"),
             reverse("admin:care_review_changelist"),
-            reverse("admin:notifications_notification_changelist"),
         ]:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_dashboard_stats(self):
-        from apps.bookings.templatetags.admin_dashboard import dashboard_stats
-
-        stats = dashboard_stats({"request": None})
-        self.assertEqual(stats["boarding"], 1)
-        self.assertEqual(stats["capacity"], 1)
-        self.assertEqual(stats["occupancy"], 100)
-        self.assertContains(self.client.get(reverse("admin:index")), "运营看板")
+    def test_admin_index_has_no_dashboard_board(self):
+        response = self.client.get(reverse("admin:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "门店功能")
+        self.assertNotContains(response, "待入住")
+        self.assertNotContains(response, "ps-kpi-card")
+        self.assertNotContains(response, "门店工作台")
 
     def test_checkout_action(self):
         self.client.post(
@@ -512,7 +394,7 @@ class AdminTests(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.COMPLETED)
 
-    def test_admin_reschedule_paid_order_settles_difference(self):
+    def test_admin_can_change_dates_and_reprice(self):
         order = make_order(start=3, nights=2)
         payment = order.pay(Payment.Method.CASH)
         data = {
@@ -532,4 +414,4 @@ class AdminTests(TestCase):
         self.assertEqual(response.status_code, 302)
         order.refresh_from_db()
         self.assertEqual((order.check_out, order.amount, order.note), (days(4), Decimal("100.00"), "门店改期"))
-        self.assertEqual(order.payments.get(kind=Payment.Kind.REFUND).amount, Decimal("100.00"))
+        self.assertEqual(order.payment_status, Order.PaymentStatus.PAID)

@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div class="ps-order-help">
+  <strong>顾客查询：</strong>
+  按姓名/手机号检索主人档案；点进详情可查看关联宠物。
+  宠物档案请使用顶栏「顾客宠物」或左侧宠物列表。
+</div>
+{{ block.super }}
+{% endblock %}

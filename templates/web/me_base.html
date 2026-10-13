@@ -14,13 +14,12 @@
           </div>
         </div>
         <div class="list-group list-group-flush">
-          <a class="list-group-item list-group-item-action {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'web:dashboard' %}"><i class="bi bi-grid"></i>个人中心</a>
-          <a class="list-group-item list-group-item-action {% if url_name|slice:':5' == 'order' %}active{% endif %}" href="{% url 'web:order_list' %}"><i class="bi bi-receipt"></i>我的订单</a>
-          <a class="list-group-item list-group-item-action {% if url_name|slice:':3' == 'pet' %}active{% endif %}" href="{% url 'web:pet_list' %}"><i class="bi bi-heart"></i>我的宠物</a>
-          <a class="list-group-item list-group-item-action {% if url_name == 'notifications' %}active{% endif %}" href="{% url 'web:notifications' %}">
-            <i class="bi bi-bell"></i>消息通知{% if unread_notifications %}<span class="badge rounded-pill text-bg-danger float-end">{{ unread_notifications }}</span>{% endif %}
-          </a>
-          <a class="list-group-item list-group-item-action {% if url_name == 'profile' or url_name == 'password_change' %}active{% endif %}" href="{% url 'web:profile' %}"><i class="bi bi-gear"></i>账号设置</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'web:dashboard' %}"><i class="bi bi-grid"></i>功能概览</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'profile' or url_name == 'password_change' %}active{% endif %}" href="{% url 'web:profile' %}"><i class="bi bi-person-vcard"></i>个人信息</a>
+          <a class="list-group-item list-group-item-action {% if url_name|slice:':3' == 'pet' %}active{% endif %}" href="{% url 'web:pet_list' %}"><i class="bi bi-heart"></i>宠物登记</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'room_list' or url_name == 'room_detail' or url_name == 'booking_create' %}active{% endif %}" href="{% url 'web:room_list' %}"><i class="bi bi-door-open"></i>房间查询</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'order_list' or url_name == 'order_detail' or url_name == 'order_pay' %}active{% endif %}" href="{% url 'web:order_list' %}"><i class="bi bi-journal-text"></i>寄养记录</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'review_list' or url_name == 'order_review' %}active{% endif %}" href="{% url 'web:review_list' %}"><i class="bi bi-star"></i>服务评价</a>
         </div>
       </div>
     </aside>
