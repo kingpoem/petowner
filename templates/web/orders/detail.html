@@ -12,6 +12,7 @@
   <div class="d-flex gap-2">
     {% if order.can_pay %}<a class="btn btn-primary" href="{% url 'web:order_pay' order.order_no %}"><i class="bi bi-wallet2 me-1"></i>{% if order.payment_status == 'partial' %}补差价{% else %}去支付{% endif %} ¥{{ balance_due }}</a>{% endif %}
     {% if order.can_review %}<a class="btn btn-primary" href="{% url 'web:order_review' order.order_no %}"><i class="bi bi-star me-1"></i>评价本次服务</a>{% endif %}
+    <a class="btn btn-light" href="{% url 'web:order_receipt' order.order_no %}"><i class="bi bi-printer me-1"></i>收据</a>
     {% if order.can_reschedule %}<a class="btn btn-light" href="{% url 'web:order_reschedule' order.order_no %}"><i class="bi bi-calendar2-range me-1"></i>改期 / 换房</a>{% endif %}
     {% if order.can_cancel %}<button class="btn btn-light text-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">取消预约</button>{% endif %}
   </div>
@@ -72,6 +73,9 @@
         <dt class="col-4 text-muted fw-normal">离店</dt><dd class="col-8">{{ order.check_out|date:"Y-m-d D" }}（{{ order.days }} 晚）</dd>
         <dt class="col-4 text-muted fw-normal">订单状态</dt><dd class="col-8"><span class="badge rounded-pill text-bg-{{ order.status|badge }}">{{ order.get_status_display }}</span></dd>
         <dt class="col-4 text-muted fw-normal">支付状态</dt><dd class="col-8"><span class="badge rounded-pill text-bg-{{ order.payment_status|badge }}">{{ order.get_payment_status_display }}</span></dd>
+        {% for line in order.addons.all %}
+          <dt class="col-4 text-muted fw-normal">{{ line.service.name }}</dt><dd class="col-8">¥{{ line.line_total }}</dd>
+        {% endfor %}
         {% if order.discount %}<dt class="col-4 text-muted fw-normal">优惠</dt><dd class="col-8 text-success">-¥{{ order.discount }}</dd>{% endif %}
         {% if order.status == 'cancelled' %}
           {% if order.cancel_fee %}<dt class="col-4 text-muted fw-normal">违约金</dt><dd class="col-8 fw-bold">¥{{ order.cancel_fee }}</dd>{% endif %}

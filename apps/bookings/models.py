@@ -53,6 +53,12 @@ class Order(models.Model):
     status = models.CharField("订单状态", max_length=20, choices=Status, default=Status.PENDING)
     source = models.CharField("下单渠道", max_length=20, choices=Source, default=Source.FRONT_DESK)
     note = models.CharField("备注", max_length=200, blank=True)
+    coupon_code = models.CharField("优惠码", max_length=32, blank=True)
+    coupon_discount = models.DecimalField("优惠券减免（元）", max_digits=10, decimal_places=2, default=0)
+    member_discount = models.DecimalField("会员折扣（元）", max_digits=10, decimal_places=2, default=0)
+    points_redeemed = models.PositiveIntegerField("抵扣积分", default=0)
+    points_discount = models.DecimalField("积分抵扣（元）", max_digits=10, decimal_places=2, default=0)
+    addon_amount = models.DecimalField("增值服务（元）", max_digits=10, decimal_places=2, default=0)
     cancel_reason = models.CharField("取消原因", max_length=200, blank=True)
     cancel_fee = models.DecimalField("取消违约金（元）", max_digits=10, decimal_places=2, default=0, editable=False)
     paid_at = models.DateTimeField("支付时间", null=True, blank=True)
@@ -72,13 +78,15 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if self.room_id and not self.store_id:
-            self.store_id = getattr(self.room, "store_id", None) or Room.objects.filter(pk=self.room_id).values_list(
-                "store_id", flat=True
-            ).first()
+            self.store_id = (
+                getattr(self.room, "store_id", None)
+                or Room.objects.filter(pk=self.room_id).values_list("store_id", flat=True).first()
+            )
         if self.status == self.Status.PENDING and self.payment_status == self.PaymentStatus.UNPAID:
             q = quote(self.room, self.check_in, self.check_out)
-            extra = getattr(self, "_extra_discount", Decimal("0.00")) or Decimal("0.00")
-            self.amount = max(q.total - extra, Decimal("0.00"))
+            extra = self.promo_total()
+            addon = Decimal(self.addon_amount or 0)
+            self.amount = max(q.total + addon - extra, Decimal("0.00"))
             self.discount = q.discount + extra
         super().save(*args, **kwargs)
         if not self.order_no:
@@ -91,6 +99,15 @@ class Order(models.Model):
     @property
     def days(self) -> int:
         return (self.check_out - self.check_in).days
+
+    def promo_total(self) -> Decimal:
+        extra = (
+            Decimal(self.coupon_discount or 0) + Decimal(self.member_discount or 0) + Decimal(self.points_discount or 0)
+        )
+        bonus = getattr(self, "_extra_discount", None)
+        if bonus:
+            extra += Decimal(bonus)
+        return extra
 
     @property
     def is_active(self) -> bool:
@@ -222,6 +239,9 @@ class Order(models.Model):
     @transaction.atomic
     def cancel(self, reason: str = "", waive_fee: bool = False):
         self._require_status(self.Status.PENDING, action="取消预约")
+        from apps.hospitality.services import release_commerce
+
+        release_commerce(self)
         fee = Decimal("0.00") if waive_fee else self.cancellation_fee()
         paid = self.net_paid
         refund = self._refund(paid - fee)
@@ -253,8 +273,13 @@ class Order(models.Model):
             self.full_clean()
         finally:
             self._rescheduling = False
+        from apps.hospitality.services import retarget_addons
+
+        retarget_addons(self)
         new_quote = quote(room, check_in, check_out)
-        self.amount, self.discount = new_quote.total, new_quote.discount
+        extra = self.promo_total()
+        self.amount = max(new_quote.total + Decimal(self.addon_amount or 0) - extra, Decimal("0.00"))
+        self.discount = new_quote.discount + extra
         refund = self._refund(self.net_paid - self.amount)
         self._sync_payment_status()
         self.save()
@@ -278,6 +303,9 @@ class Order(models.Model):
         self.checked_in_at = timezone.now()
         self.save(update_fields=["status", "checked_in_at", "updated_at"])
         self.room.refresh_status()
+        from apps.hospitality.services import open_care_tasks
+
+        open_care_tasks(self)
         self._notify("已办理入住", f"{self.pet.name} 已入住 {self.room.display_name}，可随时查看护理动态。")
 
     @transaction.atomic
@@ -291,9 +319,14 @@ class Order(models.Model):
         if released_early:
             self.check_out = max(today, self.check_in + timedelta(days=1))
             if settings.EARLY_CHECKOUT_REFUND:
+                from apps.hospitality.services import retarget_addons
+
+                retarget_addons(self)
                 stayed = quote(self.room, self.check_in, self.check_out)
-                if stayed.total < self.amount:
-                    self.amount, self.discount = stayed.total, stayed.discount
+                target = max(stayed.total + Decimal(self.addon_amount or 0) - self.promo_total(), Decimal("0.00"))
+                if target < self.amount:
+                    self.amount = target
+                    self.discount = stayed.discount + self.promo_total()
                     refund = self._refund(self.net_paid - self.amount)
                     self._sync_payment_status()
         self.save(
@@ -311,6 +344,9 @@ class Order(models.Model):
         body = f"{self.pet.name} 已平安离店，欢迎为本次服务评价。"
         if refund:
             body += f"未入住的 {self.check_out:%m月%d日} 起房费 ¥{refund.amount} 已原路退回。"
+        from apps.hospitality.services import award_stay_points
+
+        award_stay_points(self)
         self._notify("寄养已完成", body, "success")
 
 

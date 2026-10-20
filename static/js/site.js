@@ -94,7 +94,7 @@
     // 实时报价：房间/日期/优惠码/积分变化时局部刷新费用明细
     document.querySelectorAll("form[data-quote-url]").forEach((form) => {
       const target = document.querySelector(form.dataset.quoteTarget);
-      const fields = ["room", "check_in", "check_out", "coupon_code", "redeem_points"];
+      const fields = ["pet", "room", "check_in", "check_out", "coupon_code", "redeem_points"];
       let controller;
       let timer;
       const refresh = async () => {
@@ -103,6 +103,8 @@
           const value = form.elements[name]?.value;
           if (value) params.set(name, value);
         });
+        if (form.elements.use_member?.checked) params.set("use_member", "on");
+        form.querySelectorAll('input[name="addons"]:checked').forEach((el) => params.append("addons", el.value));
         if (form.dataset.order) params.set("order", form.dataset.order);
         controller?.abort();
         controller = new AbortController();
@@ -129,6 +131,38 @@
         el.addEventListener("change", schedule);
         el.addEventListener("input", schedule);
       });
+      form.addEventListener("change", (event) => {
+        if (event.target.name === "addons" || event.target.name === "use_member") schedule();
+      });
+    });
+
+    // 日课折叠：拖动钟点，房间改用那个时刻之前最近的一条护理。
+    document.querySelectorAll("[data-breath-replay]").forEach((root) => {
+      const node = document.getElementById(root.dataset.breathReplay);
+      const slider = root.querySelector('input[type="range"]');
+      const clock = root.querySelector("[data-breath-clock]");
+      if (!node || !slider || !clock) return;
+      const data = JSON.parse(node.textContent);
+      const paint = () => {
+        const hour = String(slider.value);
+        clock.textContent = `${hour.padStart(2, "0")}:00`;
+        const frame = data.frames[hour] || {};
+        root.querySelectorAll(".kennel.live").forEach((room) => {
+          const state = frame[room.dataset.room];
+          const caption = room.querySelector(".kennel-caption");
+          if (!state) {
+            room.style.setProperty("--breath", `${data.rest}s`);
+            room.classList.remove("alert");
+            if (caption) caption.textContent = "安稳";
+            return;
+          }
+          room.style.setProperty("--breath", `${state.breath}s`);
+          room.classList.toggle("alert", Boolean(state.alert));
+          if (caption) caption.textContent = state.caption;
+        });
+      };
+      slider.addEventListener("input", paint);
+      paint();
     });
   });
 })();

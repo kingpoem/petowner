@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review
+from apps.hospitality.models import AddonService
+from apps.hospitality.services import apply_stay, ensure_member, price_booking
 from apps.pets.models import Owner, Pet, Species
 from apps.rooms.models import Room
 from apps.security.forms import LoginGuardMixin, SmsCodeField, SmsVerifyMixin
@@ -181,6 +183,16 @@ class SearchForm(BootstrapMixin, DateRangeMixin, forms.Form):
 
 
 class BookingForm(BootstrapMixin, forms.ModelForm):
+    coupon_code = forms.CharField(label="优惠码", required=False, help_text="例如 WELCOME、LONGSTAY、PAW50")
+    redeem_points = forms.IntegerField(label="抵扣积分", required=False, min_value=0, help_text="100 积分 = ¥1")
+    use_member = forms.BooleanField(label="使用会员房费折扣", required=False)
+    addons = forms.ModelMultipleChoiceField(
+        label="增值服务",
+        queryset=AddonService.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "addon-list"}),
+    )
+
     class Meta:
         model = Order
         fields = ["pet", "room", "check_in", "check_out", "note"]
@@ -190,6 +202,7 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, owner: Owner, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
+        self.stay = None
         self.instance.source = Order.Source.ONLINE
         pets = owner.pets.all()
         self.fields["pet"].queryset = pets
@@ -200,6 +213,38 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
         self.fields["room"].queryset = bookable_rooms()
         self.fields["room"].label_from_instance = room_label
         self.fields["room"].empty_label = "请选择房间"
+        self.fields["addons"].queryset = AddonService.objects.filter(is_active=True)
+        self.fields["addons"].label_from_instance = addon_label
+        account = ensure_member(owner)
+        if account.rate < 1:
+            self.fields["use_member"].help_text = f"当前{account.tier_name}，房费可享 {account.discount_label}"
+        else:
+            self.fields["use_member"].help_text = "累计积分达到银卡后，预约时可勾选房费折扣"
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.errors or not cleaned.get("room"):
+            return cleaned
+        self.stay = price_booking(
+            room=cleaned["room"],
+            check_in=cleaned["check_in"],
+            check_out=cleaned["check_out"],
+            addon_ids=[item.pk for item in cleaned.get("addons") or []],
+            coupon_code=cleaned.get("coupon_code") or "",
+            redeem_points=cleaned.get("redeem_points") or 0,
+            use_member=bool(cleaned.get("use_member")),
+            owner=self.owner,
+            pet=cleaned.get("pet"),
+        )
+        for error in self.stay.errors:
+            self.add_error(None, error)
+        return cleaned
+
+    def save(self, commit=True):
+        order = super().save(commit=False)
+        if commit:
+            apply_stay(order, self.stay)
+        return order
 
 
 def bookable_rooms():
@@ -208,6 +253,11 @@ def bookable_rooms():
 
 def room_label(room: Room) -> str:
     return f"{room.display_name} · {room.get_pet_type_display()} · ¥{room.price.normalize():f}/晚"
+
+
+def addon_label(service) -> str:
+    unit = "晚" if service.billing == "night" else "次"
+    return f"{service.name} · ¥{service.price}/{unit} · {service.summary}"
 
 
 class RescheduleForm(BootstrapMixin, DateRangeMixin, forms.Form):

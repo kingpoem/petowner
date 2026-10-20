@@ -21,7 +21,13 @@
           <div class="col-6">{% include "web/_field.html" with field=form.check_out %}</div>
         </div>
         {% include "web/_field.html" with field=form.note %}
-        <p class="small text-muted mb-0"><i class="bi bi-calculator me-1"></i>修改房间或日期后，右侧费用会自动试算</p>
+        {% include "web/_field.html" with field=form.addons %}
+        <div class="row">
+          <div class="col-md-6">{% include "web/_field.html" with field=form.coupon_code %}</div>
+          <div class="col-md-6">{% include "web/_field.html" with field=form.redeem_points %}</div>
+        </div>
+        {% include "web/_field.html" with field=form.use_member %}
+        <p class="small text-muted mb-0"><i class="bi bi-calculator me-1"></i>修改房间、日期、增值服务或优惠后，右侧费用会自动试算</p>
       </div>
     </div>
     <div class="col-lg-5">

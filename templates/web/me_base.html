@@ -16,7 +16,9 @@
         <div class="list-group list-group-flush">
           <a class="list-group-item list-group-item-action {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'web:dashboard' %}"><i class="bi bi-grid"></i>个人中心</a>
           <a class="list-group-item list-group-item-action {% if url_name|slice:':5' == 'order' %}active{% endif %}" href="{% url 'web:order_list' %}"><i class="bi bi-receipt"></i>我的订单</a>
-          <a class="list-group-item list-group-item-action {% if url_name|slice:':3' == 'pet' %}active{% endif %}" href="{% url 'web:pet_list' %}"><i class="bi bi-heart"></i>我的宠物</a>
+          <a class="list-group-item list-group-item-action {% if url_name|slice:':3' == 'pet' or url_name == 'pet_health' %}active{% endif %}" href="{% url 'web:pet_list' %}"><i class="bi bi-heart"></i>我的宠物</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'membership' %}active{% endif %}" href="{% url 'hospitality:membership' %}"><i class="bi bi-gem"></i>会员积分</a>
+          <a class="list-group-item list-group-item-action {% if url_name == 'waitlist' %}active{% endif %}" href="{% url 'hospitality:waitlist' %}"><i class="bi bi-hourglass-split"></i>满房候补</a>
           <a class="list-group-item list-group-item-action {% if url_name == 'notifications' %}active{% endif %}" href="{% url 'web:notifications' %}">
             <i class="bi bi-bell"></i>消息通知{% if unread_notifications %}<span class="badge rounded-pill text-bg-danger float-end">{{ unread_notifications }}</span>{% endif %}
           </a>

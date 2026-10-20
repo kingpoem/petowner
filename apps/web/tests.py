@@ -523,6 +523,8 @@ class AdminTests(TestCase):
             "note": "门店改期",
             "service_records-TOTAL_FORMS": 0,
             "service_records-INITIAL_FORMS": 0,
+            "addons-TOTAL_FORMS": 0,
+            "addons-INITIAL_FORMS": 0,
             "payments-TOTAL_FORMS": 1,
             "payments-INITIAL_FORMS": 1,
             "payments-0-id": payment.pk,

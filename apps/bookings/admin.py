@@ -8,6 +8,7 @@ from django.urls import path
 from django.utils import timezone
 
 from apps.care.models import ServiceRecord
+from apps.hospitality.admin import OrderAddonInline
 from apps.pets.models import Species
 
 from .calendar import build_calendar
@@ -103,7 +104,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_select_related = ("pet__owner", "room", "store")
     date_hierarchy = "check_in"
-    inlines = [ServiceRecordInline, PaymentInline]
+    inlines = [ServiceRecordInline, OrderAddonInline, PaymentInline]
     actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders", "cancel_orders_full_refund")
     change_list_template = "admin/bookings/order/change_list.html"
 

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.rooms",
     "apps.bookings",
     "apps.care",
+    "apps.hospitality",
     "apps.notifications",
     "apps.security",
     "apps.payments",

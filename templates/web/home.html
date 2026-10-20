@@ -20,6 +20,16 @@
 </section>
 
 <div class="container stat-strip">
+  {% if notices %}
+  <div class="ps-card p-3 mb-4">
+    {% for notice in notices %}
+    <div class="{% if not forloop.last %}mb-3 pb-3 border-bottom{% endif %}">
+      <div class="fw-semibold"><i class="bi bi-megaphone text-primary me-1"></i>{{ notice.title }}</div>
+      <div class="small text-muted mt-1">{{ notice.body }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   <form class="search-card mb-4" action="{% url 'web:room_list' %}" method="get">
     <div class="row g-3 align-items-end">
       <div class="col-6 col-lg-2">
@@ -40,6 +50,11 @@
     </div>
     <p class="small text-muted mt-3 mb-0"><i class="bi bi-gift me-1 text-primary"></i>连住 {{ SITE.long_stay_days }} 晚及以上享 {{ SITE.long_stay_rate }} 折 · 入住前免费取消</p>
   </form>
+  <a class="house-teaser" href="{% url 'hospitality:house' %}">
+    <span class="pulse" aria-hidden="true"></span>
+    <strong>此刻 {{ board.occupied }} 位住客在店里</strong>
+    <span class="small text-muted">{{ board.quiet_line }}</span>
+  </a>
   <div class="row g-3">
     <div class="col-6 col-md-3"><div class="stat-card"><div class="num">{{ room_count }}</div><div class="small text-muted">间独立寄养房</div></div></div>
     {% if avg_rating %}
@@ -148,6 +163,7 @@
           <div class="body"><h5 class="mb-1">健康观察</h5><p class="small mb-0 opacity-75">每日检查精神与排便，异常即时告知</p></div></div>
       </div>
     </div>
+    <div class="text-center mt-4"><a class="btn btn-outline-primary" href="{% url 'hospitality:services' %}">查看可加购的增值服务</a></div>
   </div>
 </section>
 

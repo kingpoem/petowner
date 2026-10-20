@@ -20,6 +20,10 @@ from django.views.decorators.http import require_POST
 
 from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
+from apps.hospitality.house import house_board
+from apps.hospitality.models import StoreNotice
+from apps.hospitality.pulse import weave
+from apps.hospitality.services import ensure_member, preview_reschedule, price_booking
 from apps.notifications.models import Notification
 from apps.pets.models import Pet
 from apps.rooms.models import Room
@@ -87,6 +91,8 @@ def home(request):
         "avg_rating": rating["avg"],
         "review_count": rating["total"],
         "search_form": SearchForm(initial={"check_in": tomorrow, "check_out": tomorrow + timedelta(days=3)}),
+        "notices": StoreNotice.published()[:3],
+        "board": house_board(),
     }
     return render(request, "web/home.html", context)
 
@@ -254,6 +260,7 @@ def dashboard(request):
         "to_review": orders.filter(status=Order.Status.COMPLETED, review__isnull=True)[:3],
         "notifications": request.user.notifications.filter(is_read=False)[:5],
         "vaccine_warnings": [p for p in owner.pets.all() if not p.vaccine_valid_through(today + timedelta(days=30))],
+        "membership": ensure_member(owner),
     }
     return render(request, "web/dashboard.html", context)
 
@@ -296,17 +303,30 @@ def booking_create(request):
         return redirect(f"{reverse('web:pet_create')}?{urlencode({'next': request.get_full_path()})}")
     initial = {k: request.GET.get(k) for k in ("pet", "room", "check_in", "check_out") if request.GET.get(k)}
     form = BookingForm(request.POST or None, owner=request.owner, initial=initial)
-    booking_quote = _parse_quote(form.data if form.is_bound else initial)
+    params = form.data if form.is_bound else initial
+    booking_quote, stay = _stay_for(params, request.owner)
     if request.method == "POST":
         with transaction.atomic():
             room_id = form.data.get("room", "")
             if room_id.isdigit():
                 list(Room.objects.select_for_update().filter(pk=room_id))
             if form.is_valid():
-                order = form.save()
-                messages.success(request, f"预约成功，订单号 {order.order_no}，请完成支付以锁定房间")
-                return redirect("web:order_pay", order_no=order.order_no)
-    return render(request, "web/orders/create.html", {"form": form, "quote": booking_quote})
+                try:
+                    order = form.save()
+                except ValidationError as exc:
+                    transaction.set_rollback(True)
+                    form.add_error(None, exc)
+                else:
+                    messages.success(request, f"预约成功，订单号 {order.order_no}，请完成支付以锁定房间")
+                    return redirect("web:order_pay", order_no=order.order_no)
+        if form.stay is not None:
+            stay = form.stay
+            booking_quote = stay.room_quote
+    return render(
+        request,
+        "web/orders/create.html",
+        {"form": form, "quote": booking_quote, "stay": stay, "weave": _company_weave(params, request.owner)},
+    )
 
 
 def _owner_order(request, order_no):
@@ -351,6 +371,21 @@ def order_detail(request, order_no):
         fee = order.cancellation_fee()
         context.update(cancel_fee=fee, cancel_refund=paid - fee)
     return render(request, "web/orders/detail.html", context)
+
+
+@owner_required
+def order_receipt(request, order_no):
+    order = _owner_order(request, order_no)
+    return render(
+        request,
+        "web/orders/receipt.html",
+        {
+            "order": order,
+            "stay_quote": quote(order.room, order.check_in, order.check_out),
+            "addons": order.addons.select_related("service"),
+            "paid": order.net_paid,
+        },
+    )
 
 
 @owner_required
@@ -421,19 +456,69 @@ def order_reschedule(request, order_no):
     target = (order.room, order.check_in, order.check_out)
     if form.is_bound and form.is_valid():
         target = (form.cleaned_data["room"], form.cleaned_data["check_in"], form.cleaned_data["check_out"])
-    context = {"order": order, "form": form, **_quote_context(quote(*target), order)}
+    room_quote = quote(*target)
+    context = {
+        "order": order,
+        "form": form,
+        **_quote_context(room_quote, order, preview_reschedule(order, room_quote)),
+    }
     return render(request, "web/orders/reschedule.html", context)
 
 
-def _quote_context(booking_quote, order=None) -> dict:
+def _quote_context(booking_quote, order=None, stay=None) -> dict:
     """费用明细片段的上下文；传入订单时附带与已付金额的差额（改期场景）。"""
-    context = {"quote": booking_quote, "order": order}
-    if booking_quote is not None:
-        context["payable"] = booking_quote.total
-    if order is not None and booking_quote is not None:
-        diff = booking_quote.total - order.net_paid
+    context = {"quote": booking_quote, "order": order, "stay": stay}
+    payable = None
+    if stay is not None:
+        payable = stay.payable
+    elif booking_quote is not None:
+        payable = booking_quote.total
+    if payable is not None:
+        context["payable"] = payable
+    if order is not None and payable is not None:
+        diff = payable - order.net_paid
         context.update(paid=order.net_paid, top_up=max(diff, 0), refund=max(-diff, 0))
     return context
+
+
+def _param_list(params, name):
+    if hasattr(params, "getlist"):
+        return params.getlist(name)
+    value = params.get(name) if hasattr(params, "get") else None
+    if not value:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def _stay_for(params, owner, order=None):
+    booking_quote = _parse_quote(params)
+    if booking_quote is None:
+        return None, None
+    if order is not None:
+        return booking_quote, preview_reschedule(order, booking_quote)
+    try:
+        room = Room.objects.get(pk=params.get("room"))
+        check_in = date.fromisoformat(str(params.get("check_in")))
+        check_out = date.fromisoformat(str(params.get("check_out")))
+        points = int(params.get("redeem_points") or 0)
+    except (Room.DoesNotExist, ValueError, TypeError):
+        return booking_quote, None
+    pet = None
+    pet_id = params.get("pet")
+    if pet_id and str(pet_id).isdigit() and owner is not None:
+        pet = owner.pets.filter(pk=pet_id).first()
+    stay = price_booking(
+        room=room,
+        check_in=check_in,
+        check_out=check_out,
+        addon_ids=_param_list(params, "addons"),
+        coupon_code=params.get("coupon_code") or "",
+        redeem_points=points,
+        use_member=str(params.get("use_member") or "") in {"1", "on", "true", "True"},
+        owner=owner,
+        pet=pet,
+    )
+    return booking_quote, stay
 
 
 def _parse_quote(params):
@@ -452,8 +537,38 @@ def _parse_quote(params):
 def quote_preview(request):
     """预约/改期页面的费用明细片段，供前端在房间或日期变化时局部刷新。"""
     order = _owner_order(request, request.GET["order"]) if request.GET.get("order") else None
-    booking_quote = _parse_quote(request.GET)
-    return render(request, "web/orders/_quote.html", _quote_context(booking_quote, order))
+    booking_quote, stay = _stay_for(request.GET, request.owner, order)
+    context = _quote_context(booking_quote, order, stay)
+    context["weave"] = _company_weave(request.GET, request.owner)
+    return render(request, "web/orders/_quote.html", context)
+
+
+def _company_weave(params, owner):
+    if owner is None or not hasattr(params, "get"):
+        return None
+    try:
+        check_in = date.fromisoformat(str(params.get("check_in") or ""))
+        check_out = date.fromisoformat(str(params.get("check_out") or ""))
+    except ValueError:
+        return None
+    if not (0 < (check_out - check_in).days <= settings.MAX_BOARDING_DAYS):
+        return None
+    pet_id = params.get("pet")
+    if not pet_id or not str(pet_id).isdigit():
+        return None
+    pet = owner.pets.filter(pk=int(pet_id)).first()
+    if pet is None:
+        return None
+    company = (
+        Order.objects.filter(
+            status__in=Order.ACTIVE_STATUSES,
+            check_in__lt=check_out,
+            check_out__gt=check_in,
+        )
+        .exclude(pet_id=pet.pk)
+        .select_related("pet")
+    )
+    return weave(pet.species, pet.temperament, [(row.pet.species, row.pet.temperament) for row in company])
 
 
 @owner_required

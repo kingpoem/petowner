@@ -402,6 +402,29 @@ h1, h2, h3, h4, h5 {
   min-height: 280px;
 }
 
+.addon-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.addon-list li label {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--ps-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.addon-list li label:hover {
+  border-color: #f6a888;
+}
+
 @keyframes skeleton-shine {
   0% { background-position: 100% 0; }
   100% { background-position: 0 0; }

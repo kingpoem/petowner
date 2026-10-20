@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review, ServiceRecord
+from apps.hospitality.seed import attach_demo_addon, seed_catalog, seed_story
 from apps.notifications.models import Notification
 from apps.pets.models import Owner, Pet, PetSize, Species
 from apps.rooms.models import Room
@@ -156,12 +157,14 @@ class Command(BaseCommand):
             User.objects.create_superuser("admin", "admin@example.com", "admin123")
             self.stdout.write("已创建管理员 admin / admin123")
         self._groups()
+        seed_catalog()
 
         flagship = Store.objects.filter(code="flagship").first() or Store.default()
 
         if Room.objects.exists():
             Room.objects.filter(store__isnull=True).update(store=flagship)
-            self.stdout.write(self.style.WARNING("已存在业务数据，跳过演示数据写入（已补全门店关联）"))
+            seed_story()
+            self.stdout.write(self.style.WARNING("已存在业务数据，跳过演示数据写入（已补全门店关联与服务目录）"))
             return
 
         rooms = {}
@@ -358,6 +361,7 @@ class Command(BaseCommand):
             check_out=today + timedelta(days=12),
             source=Order.Source.ONLINE,
         )
+        attach_demo_addon(upcoming, "video")
         upcoming.pay(Payment.Method.WECHAT)
         _backdate(upcoming)
         phone_booking = Order.objects.create(
@@ -373,6 +377,7 @@ class Command(BaseCommand):
         Owner.objects.update(created_at=months_ago)
         Pet.objects.update(created_at=months_ago)
 
+        seed_story()
         self.stdout.write(self.style.SUCCESS(f"演示数据写入完成；演示顾客 13800000001 / {DEMO_PASSWORD}"))
 
     def _groups(self):
@@ -397,11 +402,32 @@ class Command(BaseCommand):
                 "view_servicerecord",
                 "view_review",
                 "change_review",
+                "view_addonservice",
+                "view_coupon",
+                "view_waitlistentry",
+                "change_waitlistentry",
+                "view_caretask",
+                "change_caretask",
+                "view_vaccinerecord",
+                "add_vaccinerecord",
+                "view_supply",
+                "view_storenotice",
             )
         )
         carer, _ = Group.objects.get_or_create(name="护理师")
         carer.permissions.set(
             perms(
-                "view_pet", "view_order", "view_room", "view_servicerecord", "add_servicerecord", "change_servicerecord"
+                "view_pet",
+                "view_order",
+                "view_room",
+                "view_servicerecord",
+                "add_servicerecord",
+                "change_servicerecord",
+                "view_caretask",
+                "change_caretask",
+                "add_caretask",
+                "view_medication",
+                "view_vaccinerecord",
+                "add_supplymovement",
             )
         )
