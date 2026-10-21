@@ -202,10 +202,8 @@ class PetForm(BootstrapMixin, forms.ModelForm):
             "temperament",
             "health_status",
             "diet_notes",
-            "deworm_expiry",
         ]
         widgets = {
-            "deworm_expiry": DATE_INPUT,
             "photo": forms.FileInput(attrs={"accept": "image/*", "data-preview": "#photoPreview"}),
         }
 

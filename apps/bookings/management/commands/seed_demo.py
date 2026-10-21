@@ -187,9 +187,7 @@ class Command(BaseCommand):
         wang = Owner.objects.create(name="王芳", phone="13800000003", address="长宁区")
 
         def pet(owner, slot, **fields):
-            p = Pet.objects.create(
-                owner=owner, deworm_expiry=today + timedelta(days=60), **fields
-            )
+            p = Pet.objects.create(owner=owner, **fields)
             _attach(p, "photo", slot)
             return p
 

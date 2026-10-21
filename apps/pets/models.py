@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 
 from django.conf import settings
@@ -84,7 +83,6 @@ class Pet(models.Model):
         blank=True,
         help_text="可选。如：每日两餐每餐 150g 狗粮；对鸡肉过敏",
     )
-    deworm_expiry = models.DateField("驱虫有效期至", null=True, blank=True)
     owner = models.ForeignKey(Owner, verbose_name="主人", on_delete=models.PROTECT, related_name="pets")
     created_at = models.DateTimeField("建档时间", auto_now_add=True)
 
@@ -105,6 +103,3 @@ class Pet(models.Model):
     @property
     def size(self) -> PetSize:
         return PetSize.from_weight(self.weight)
-
-    def deworm_valid_through(self, day: date) -> bool:
-        return self.deworm_expiry is not None and self.deworm_expiry >= day

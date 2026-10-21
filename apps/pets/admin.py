@@ -23,9 +23,9 @@ def thumbnail(file, size=48):
 class PetInline(admin.TabularInline):
     model = Pet
     extra = 0
-    fields = ("code", "name", "species", "breed", "age", "weight", "deworm_expiry")
+    fields = ("code", "name", "species", "breed", "age", "weight")
     readonly_fields = ("code",)
-    show_change_link = True
+    show_change_link = False
 
 
 class OrderHistoryInline(admin.TabularInline):
@@ -34,7 +34,7 @@ class OrderHistoryInline(admin.TabularInline):
     verbose_name_plural = "历史寄养记录"
     fields = ("order_no", "room", "check_in", "check_out", "amount", "payment_status", "status")
     readonly_fields = fields
-    show_change_link = True
+    show_change_link = False
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
@@ -81,7 +81,7 @@ class PetAdmin(admin.ModelAdmin):
             {"fields": ("code", "owner", "name", "photo", "photo_preview", "species", "breed", "gender", "age")},
         ),
         ("体型与性格", {"fields": ("weight", "sterilized", "temperament")}),
-        ("健康", {"fields": ("health_status", "deworm_expiry", "diet_notes")}),
+        ("健康", {"fields": ("health_status", "diet_notes")}),
         (None, {"fields": ("created_at",)}),
     )
 

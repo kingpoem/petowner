@@ -1330,3 +1330,50 @@ body.ps-tag-filter-page .toplinks {
   all: unset;
   display: contents;
 }
+
+/* ---------- 内联表格：点击 × 确认后删除（隐藏勾选框） ---------- */
+body.change-form .inline-group .tabular td.delete {
+  width: 2.5rem;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+body.change-form .inline-group .tabular td.delete input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+body.change-form .inline-group .tabular td.delete .inline-deletelink {
+  display: none !important;
+}
+
+body.change-form .inline-group .tabular .ps-inline-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+body.change-form .inline-group .tabular .ps-inline-delete:hover {
+  background: #fee2e2;
+  color: #b42318;
+}
