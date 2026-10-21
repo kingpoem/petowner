@@ -4,8 +4,59 @@
   const ready = (fn) =>
     document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", fn) : fn();
 
+  const navOffset = () => (document.querySelector(".site-nav")?.offsetHeight ?? 0) + 12;
+
+  // 粘性顶栏会把平滑滚动提前打断，第一次点击会停在护理服务上面的房间卡片。
+  // 滚动结束后再对齐一次，图片加载造成高度变化时也补一次。
+  const alignHash = () => {
+    const id = decodeURIComponent(location.hash.replace(/^#/, ""));
+    const target = id && document.getElementById(id);
+    if (!target) return;
+    const anchor = target.querySelector("h1, h2") || target;
+    const delta = anchor.getBoundingClientRect().top - navOffset();
+    if (Math.abs(delta) > 8) window.scrollTo({ top: window.scrollY + delta, behavior: "auto" });
+  };
+
+  let alignUntil = 0;
+  const watchHash = () => {
+    alignUntil = performance.now() + 1500;
+    alignHash();
+    requestAnimationFrame(alignHash);
+    setTimeout(alignHash, 60);
+    setTimeout(alignHash, 300);
+  };
+
   ready(() => {
     document.querySelectorAll(".toast").forEach((el) => new bootstrap.Toast(el).show());
+
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest?.("a[href]");
+      if (!link || link.target === "_blank") return;
+      let url;
+      try {
+        url = new URL(link.href, location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== location.origin || url.pathname !== location.pathname || !url.hash) return;
+      if (!document.getElementById(decodeURIComponent(url.hash.slice(1)))) return;
+      event.preventDefault();
+      if (location.hash !== url.hash) history.pushState(null, "", url.hash);
+      watchHash();
+    });
+
+    document.querySelectorAll("img").forEach((img) => {
+      if (!img.complete) {
+        img.addEventListener("load", () => {
+          if (performance.now() < alignUntil) alignHash();
+        });
+      }
+    });
+
+    if (location.hash) {
+      if (document.readyState === "complete") watchHash();
+      else window.addEventListener("load", watchHash);
+    }
 
     // 危险操作二次确认：<form data-confirm="确定…？">
     document.addEventListener("submit", (e) => {
