@@ -20,7 +20,7 @@
 {% if not is_popup %}
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
-<li><a href="{% url 'admin:index' %}">首页</a></li>
+{% include "admin/includes/ps_nav_home.html" %}
 <li>{% if has_view_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}</li>
 <li aria-current="page">{% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|to_object_display_value|truncatewords:"18" }}{% endif %}</li>
 </ol>

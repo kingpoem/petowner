@@ -46,7 +46,7 @@ class OrderHistoryInline(admin.TabularInline):
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone", "email", "pet_count", "has_account", "created_at")
+    list_display = ("name", "phone", "pet_count", "has_account")
     search_fields = ("name", "phone")
     readonly_fields = ("user", "created_at")
     fields = ("user", "name", "phone", "email", "address", "emergency_contact", "emergency_phone", "created_at")
@@ -88,15 +88,12 @@ class PetAdmin(admin.ModelAdmin):
         "name",
         "species",
         "breed",
-        "age",
-        "weight",
         "temperament",
-        "deworm_expiry",
         "owner_name",
         "owner_phone",
     )
     list_display_links = ("photo_thumb", "code", "name")
-    list_filter = ("species", "gender", "temperament", "sterilized")
+    list_filter = ("species", "temperament")
     search_fields = ("code", "name", "breed", "owner__name", "owner__phone")
     autocomplete_fields = ("owner",)
     readonly_fields = ("code", "created_at", "photo_preview")

@@ -31,7 +31,7 @@
 {% if not is_popup %}
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
-<li><a href="{% url 'admin:index' %}">首页</a></li>
+{% include "admin/includes/ps_nav_home.html" %}
 <li aria-current="page">{{ cl.opts.verbose_name_plural|capfirst }}</li>
 </ol>
 {% endblock %}

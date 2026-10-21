@@ -1,5 +1,6 @@
-"""精简后台导航：取消应用空壳索引页，直达主模型列表；隐藏门店管理入口。"""
+"""精简后台导航：空壳应用页直达主列表；隐藏次要模块入口；去掉外键小图标。"""
 
+from django.contrib.admin.options import ModelAdmin
 from django.contrib.admin.sites import AdminSite
 from django.http import Http404
 from django.shortcuts import redirect
@@ -10,11 +11,40 @@ _PRIMARY_MODEL = {
     "pets": "pet",
     "care": "servicerecord",
     "rooms": "room",
-    "hospitality": "caretask",
+    "hospitality": "addonservice",
     "auth": "user",
 }
 
+# 侧栏/应用列表不展示：门店管理、护理任务、物资库存、收退款流水、权限组/用户
+_HIDDEN_MODELS = {
+    ("stores", "store"),
+    ("hospitality", "caretask"),
+    ("hospitality", "supply"),
+    ("bookings", "payment"),
+    ("auth", "group"),
+    ("auth", "user"),
+}
+
 _original_get_app_list = AdminSite.get_app_list
+_original_formfield_for_dbfield = ModelAdmin.formfield_for_dbfield
+
+
+def _filter_apps(apps, *, superuser: bool):
+    cleaned = []
+    for app in apps:
+        if app["app_label"] in ("stores", "auth"):
+            continue
+        models = []
+        for model in app.get("models", []):
+            key = (app["app_label"], model.get("object_name", "").lower())
+            if key in _HIDDEN_MODELS:
+                continue
+            models.append(model)
+        if not models:
+            continue
+        app = {**app, "models": models}
+        cleaned.append(app)
+    return cleaned
 
 
 def _primary_admin_url(app: dict) -> str | None:
@@ -27,6 +57,11 @@ def _primary_admin_url(app: dict) -> str | None:
             if model.get("object_name", "").lower() == preferred:
                 return model["admin_url"]
     return models[0]["admin_url"]
+
+
+def get_app_list(self, request, app_label=None):
+    apps = _original_get_app_list(self, request, app_label)
+    return _filter_apps(apps, superuser=request.user.is_superuser)
 
 
 def app_index(self, request, app_label, extra_context=None):
@@ -43,5 +78,19 @@ def app_index(self, request, app_label, extra_context=None):
     raise Http404(f"No admin models available for app {app_label}")
 
 
+def formfield_for_dbfield(self, db_field, request, **kwargs):
+    """去掉外键旁的 编辑/新增/删除/查看 小图标。"""
+    formfield = _original_formfield_for_dbfield(self, db_field, request, **kwargs)
+    widget = getattr(formfield, "widget", None)
+    if widget is not None and hasattr(widget, "can_add_related"):
+        widget.can_add_related = False
+        widget.can_change_related = False
+        widget.can_delete_related = False
+        widget.can_view_related = False
+    return formfield
+
+
 def patch_admin_nav() -> None:
+    AdminSite.get_app_list = get_app_list
     AdminSite.app_index = app_index
+    ModelAdmin.formfield_for_dbfield = formfield_for_dbfield

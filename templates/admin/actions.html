@@ -1,0 +1,49 @@
+{% load i18n static %}
+<div class="actions ps-actions" id="ps-actions">
+  {% block actions %}
+    {% block actions-form %}
+      {% for field in action_form %}
+        {% if field.name == "action" %}
+          {# 保留原生字段供提交，界面用按钮代替带英文占位的下拉 #}
+          <select name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="ps-action-native" hidden>
+            {% for value, label in field.field.choices %}
+              {% if value != "" %}<option value="{{ value }}">{{ label }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        {% else %}
+          {{ field }}
+        {% endif %}
+      {% endfor %}
+    {% endblock %}
+
+    {% block actions-submit %}
+      <button type="submit"
+              class="button ps-btn-delete"
+              name="index"
+              value="{{ action_index|default:0 }}"
+              data-ps-action="delete_selected"
+              hidden>
+        删除所选
+      </button>
+      <label class="ps-actions-more" id="ps-actions-more" hidden>
+        <span class="ps-actions-more-label">其他操作</span>
+        <select id="ps-action-more" aria-label="其他操作"></select>
+        <button type="submit" class="button ps-btn-more" name="index" value="{{ action_index|default:0 }}">执行</button>
+      </label>
+    {% endblock %}
+
+    {% block actions-counter %}
+      {% if actions_selection_counter %}
+        <span class="action-counter" data-actions-icnt="{{ cl.result_list|length }}" aria-live="polite" aria-atomic="true">{{ selection_note }}</span>
+        {% if cl.result_count != cl.result_list|length %}
+          <span class="all hidden">{{ selection_note_all }}</span>
+          <span class="question hidden">
+            <a role="button" href="#">{% blocktranslate with cl.result_count as total_count %}Select all {{ total_count }} {{ module_name }}{% endblocktranslate %}</a>
+          </span>
+          <span class="clear hidden"><a role="button" href="#">{% translate "Clear selection" %}</a></span>
+        {% endif %}
+      {% endif %}
+    {% endblock %}
+  {% endblock %}
+</div>
+<script src="{% static 'js/admin_actions.js' %}" defer></script>

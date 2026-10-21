@@ -9,10 +9,28 @@ from django.utils import timezone
 
 from apps.care.models import ServiceRecord
 from apps.hospitality.admin import OrderAddonInline
-from apps.pets.models import Species
 
 from .calendar import build_calendar
-from .models import Order, Payment, find_available_rooms
+from .models import Order, Payment
+
+
+class OrderAdminForm(forms.ModelForm):
+    """入住/离店用日历选择，不用可手填的文本日期框。"""
+
+    class Meta:
+        model = Order
+        fields = "__all__"
+        widgets = {
+            "check_in": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "check_out": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("check_in", "check_out"):
+            field = self.fields.get(name)
+            if field is not None:
+                field.input_formats = ["%Y-%m-%d"]
 
 
 class ServiceRecordInline(admin.StackedInline):
@@ -33,6 +51,8 @@ class ServiceRecordInline(admin.StackedInline):
 class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 0
+    classes = ("collapse",)
+    verbose_name_plural = "收退款流水（点击展开）"
     fields = ("transaction_no", "provider_trade_no", "kind", "method", "status", "amount", "created_at")
     readonly_fields = fields
     can_delete = False
@@ -41,23 +61,11 @@ class PaymentInline(admin.TabularInline):
         return False
 
 
-class AvailableRoomForm(forms.Form):
-    species = forms.ChoiceField(label="宠物类型", choices=Species.choices)
-    check_in = forms.DateField(label="入住时间", widget=forms.DateInput(attrs={"type": "date"}))
-    check_out = forms.DateField(label="离店时间", widget=forms.DateInput(attrs={"type": "date"}))
-
-    def clean(self):
-        data = super().clean()
-        if data.get("check_in") and data.get("check_out") and data["check_out"] <= data["check_in"]:
-            raise ValidationError("离店时间必须晚于入住时间")
-        return data
-
-
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    form = OrderAdminForm
     list_display = (
         "order_no",
-        "store",
         "pet",
         "owner_phone",
         "room",
@@ -67,11 +75,10 @@ class OrderAdmin(admin.ModelAdmin):
         "amount",
         "payment_status",
         "status",
-        "source",
     )
-    list_filter = ("store", "status", "payment_status", "source", "room__room_type", "check_in")
+    list_filter = ("status", "payment_status", "room__room_type", "check_in")
     search_fields = ("order_no", "pet__code", "pet__name", "pet__owner__name", "pet__owner__phone")
-    autocomplete_fields = ("pet", "room", "store")
+    autocomplete_fields = ("pet", "room")
     readonly_fields = (
         "order_no",
         "amount",
@@ -87,7 +94,7 @@ class OrderAdmin(admin.ModelAdmin):
         "updated_at",
     )
     fieldsets = (
-        ("预约信息", {"fields": ("order_no", "store", "pet", "room", "check_in", "check_out", "note")}),
+        ("预约信息", {"fields": ("order_no", "pet", "room", ("check_in", "check_out"), "note")}),
         (
             "费用与状态",
             {
@@ -99,13 +106,14 @@ class OrderAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("时间记录", {"fields": ("created_at", "paid_at", "checked_in_at", "checked_out_at", "updated_at")}),
+        ("时间记录", {"fields": ("created_at", "paid_at", "checked_in_at", "checked_out_at", "updated_at"), "classes": ("collapse",)}),
     )
     list_select_related = ("pet__owner", "room", "store")
     date_hierarchy = "check_in"
     inlines = [ServiceRecordInline, OrderAddonInline, PaymentInline]
     actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders", "cancel_orders_full_refund")
     change_list_template = "admin/bookings/order/change_list.html"
+    exclude = ("store",)
 
     @admin.display(description="主人电话")
     def owner_phone(self, obj):
@@ -115,9 +123,20 @@ class OrderAdmin(admin.ModelAdmin):
     def days(self, obj):
         return obj.days
 
+    def get_fieldsets(self, request, obj=None):
+        if obj is None:
+            # 新建页只保留可填项，去掉金额/状态等噪音
+            return (("预约信息", {"fields": ("pet", "room", ("check_in", "check_out"), "note")}),)
+        return self.fieldsets
+
+    def get_inline_instances(self, request, obj=None):
+        if obj is None:
+            return [OrderAddonInline(self.model, self.admin_site)]
+        return super().get_inline_instances(request, obj)
+
     def get_changeform_initial_data(self, request):
         initial = super().get_changeform_initial_data(request)
-        for key in ("room", "pet", "check_in", "check_out", "store"):
+        for key in ("room", "pet", "check_in", "check_out"):
             if request.GET.get(key):
                 initial[key] = request.GET[key]
         return initial
@@ -129,6 +148,10 @@ class OrderAdmin(admin.ModelAdmin):
         return obj
 
     def save_model(self, request, obj, form, change):
+        if not obj.store_id:
+            from apps.stores.models import Store
+
+            obj.store = Store.default()
         moved = change and {"room", "check_in", "check_out"} & set(form.changed_data)
         if not (moved and obj.payment_status != Order.PaymentStatus.UNPAID):
             return super().save_model(request, obj, form, change)
@@ -175,11 +198,6 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         custom = [
-            path(
-                "available-rooms/",
-                self.admin_site.admin_view(self.available_rooms_view),
-                name="bookings_order_available_rooms",
-            ),
             path("calendar/", self.admin_site.admin_view(self.calendar_view), name="bookings_order_calendar"),
         ]
         return custom + super().get_urls()
@@ -209,26 +227,11 @@ class OrderAdmin(admin.ModelAdmin):
         }
         return TemplateResponse(request, "admin/bookings/order/calendar.html", context)
 
-    def available_rooms_view(self, request):
-        form = AvailableRoomForm(request.GET or None)
-        rooms = None
-        if form.is_valid():
-            d = form.cleaned_data
-            rooms = find_available_rooms(d["species"], d["check_in"], d["check_out"])
-            days = (d["check_out"] - d["check_in"]).days
-            rooms = [(room, room.price * days) for room in rooms]
-        context = {
-            **self.admin_site.each_context(request),
-            "title": "可用房间查询",
-            "opts": self.model._meta,
-            "form": form,
-            "rooms": rooms,
-        }
-        return TemplateResponse(request, "admin/bookings/order/available_rooms.html", context)
-
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
+    """对账用：不进日常导航，在订单详情折叠区查看。"""
+
     list_display = ("transaction_no", "order", "kind", "method", "status", "amount", "provider_trade_no", "created_at")
     list_filter = ("kind", "method", "status", "created_at")
     search_fields = ("transaction_no", "provider_trade_no", "order__order_no")
@@ -243,6 +246,9 @@ class PaymentAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+    def has_module_permission(self, request):
+        return False
 
     def has_add_permission(self, request):
         return False

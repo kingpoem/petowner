@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 
 from apps.pets.admin import thumbnail
+from apps.stores.models import Store
 
 from .models import Room
 
@@ -9,7 +10,6 @@ from .models import Room
 class RoomAdmin(admin.ModelAdmin):
     list_display = (
         "photo_thumb",
-        "store",
         "number",
         "name",
         "room_type",
@@ -23,19 +23,24 @@ class RoomAdmin(admin.ModelAdmin):
     )
     list_display_links = ("photo_thumb", "number")
     list_editable = ("price", "is_listed")
-    list_filter = ("store", "room_type", "pet_type", "status", "is_listed")
+    list_filter = ("room_type", "pet_type", "status", "is_listed")
     search_fields = ("number", "name", "description")
-    autocomplete_fields = ("store",)
     readonly_fields = ("photo_preview",)
     actions = ("set_maintenance", "restore_available")
+    exclude = ("store",)
     fieldsets = (
         (
             "基本信息",
-            {"fields": ("store", "number", "name", "room_type", "pet_type", "max_pet_size", "capacity", "area")},
+            {"fields": ("number", "name", "room_type", "pet_type", "max_pet_size", "capacity", "area")},
         ),
         ("价格与状态", {"fields": ("price", "status", "is_listed")}),
         ("官网展示", {"fields": ("photo", "photo_preview", "amenities", "description")}),
     )
+
+    def save_model(self, request, obj, form, change):
+        if not obj.store_id:
+            obj.store = Store.default()
+        super().save_model(request, obj, form, change)
 
     @admin.display(description="照片")
     def photo_thumb(self, obj):

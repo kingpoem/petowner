@@ -7,8 +7,7 @@
 
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
-  <li><a href="{% url 'admin:index' %}">首页</a></li>
-  <li><a href="{% url 'admin:bookings_order_changelist' %}">{{ opts.verbose_name_plural }}</a></li>
+  {% include "admin/includes/ps_nav_home.html" %}
   <li aria-current="page">{{ title }}</li>
 </ol>
 {% endblock %}

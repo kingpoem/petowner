@@ -25,10 +25,15 @@ class AddonServiceAdmin(admin.ModelAdmin):
 
 @admin.register(CareTask)
 class CareTaskAdmin(admin.ModelAdmin):
+    """后勤任务：保留模型能力，不进日常导航。"""
+
     list_display = ("title", "order", "due_date", "status")
     list_filter = ("status", "due_date")
     search_fields = ("title", "order__order_no", "order__pet__name")
     autocomplete_fields = ("order",)
+
+    def has_module_permission(self, request):
+        return False
 
 
 class SupplyMovementInline(admin.TabularInline):
@@ -39,9 +44,14 @@ class SupplyMovementInline(admin.TabularInline):
 
 @admin.register(Supply)
 class SupplyAdmin(admin.ModelAdmin):
+    """物资库存：保留模型能力，不进日常导航。"""
+
     list_display = ("name", "stock", "unit", "reorder_level", "low")
     search_fields = ("name",)
     inlines = [SupplyMovementInline]
+
+    def has_module_permission(self, request):
+        return False
 
     @admin.display(boolean=True, description="需补货")
     def low(self, obj: Supply):

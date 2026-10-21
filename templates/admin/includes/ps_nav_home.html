@@ -1,0 +1,34 @@
+{# 面包屑首项：首页下拉，列出可进入的下级页面 #}
+<li class="ps-nav-root">
+  <button type="button" class="ps-nav-toggle" aria-expanded="false" aria-controls="ps-nav-panel" aria-haspopup="true" data-ps-nav-toggle>
+    导航<span class="ps-nav-caret" aria-hidden="true">▾</span>
+  </button>
+  <div id="ps-nav-panel" class="ps-nav-panel" hidden data-ps-nav-panel>
+    <a class="ps-nav-item ps-nav-item-home" href="{% url 'admin:index' %}">运营看板</a>
+
+    {% if perms.pets.view_pet or perms.pets.view_owner %}
+    <p class="ps-nav-group">宠物及主人</p>
+    {% if perms.pets.view_pet %}<a class="ps-nav-item" href="{% url 'admin:pets_pet_changelist' %}">宠物档案</a>{% endif %}
+    {% if perms.pets.view_owner %}<a class="ps-nav-item" href="{% url 'admin:pets_owner_changelist' %}">主人信息</a>{% endif %}
+    {% endif %}
+
+    {% if perms.rooms.view_room or perms.hospitality.view_holidayrate %}
+    <p class="ps-nav-group">寄养房间</p>
+    {% if perms.rooms.view_room %}<a class="ps-nav-item" href="{% url 'admin:rooms_room_changelist' %}">房间列表</a>{% endif %}
+    {% if perms.hospitality.view_holidayrate %}<a class="ps-nav-item" href="{% url 'admin:hospitality_holidayrate_changelist' %}">日历房价</a>{% endif %}
+    {% endif %}
+
+    {% if perms.bookings.view_order %}
+    <p class="ps-nav-group">预约与订单</p>
+    <a class="ps-nav-item" href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>
+    <a class="ps-nav-item" href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>
+    {% endif %}
+
+    {% if perms.care.view_servicerecord or perms.care.view_review or perms.hospitality.view_addonservice %}
+    <p class="ps-nav-group">服务与评价</p>
+    {% if perms.care.view_servicerecord %}<a class="ps-nav-item" href="{% url 'admin:care_servicerecord_changelist' %}">服务记录</a>{% endif %}
+    {% if perms.care.view_review %}<a class="ps-nav-item" href="{% url 'admin:care_review_changelist' %}">服务评价</a>{% endif %}
+    {% if perms.hospitality.view_addonservice %}<a class="ps-nav-item" href="{% url 'admin:hospitality_addonservice_changelist' %}">增值服务</a>{% endif %}
+    {% endif %}
+  </div>
+</li>

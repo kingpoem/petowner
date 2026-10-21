@@ -11,7 +11,7 @@
 
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
-<li><a href="{% url 'admin:index' %}">首页</a></li>
+{% include "admin/includes/ps_nav_home.html" %}
 <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
 <li aria-current="page">{% translate 'Delete multiple objects' %}</li>
 </ol>

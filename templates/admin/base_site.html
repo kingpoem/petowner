@@ -15,6 +15,9 @@
 
 {% block extrahead %}{{ block.super }}
 <script src="{% static 'js/datepicker.js' %}" defer></script>
+{% if not is_popup %}
+<script src="{% static 'js/admin_nav_menu.js' %}" defer></script>
+{% endif %}
 {% endblock %}
 
 {% block branding %}

@@ -45,7 +45,7 @@ class Owner(models.Model):
     created_at = models.DateTimeField("登记时间", auto_now_add=True)
 
     class Meta:
-        verbose_name = "宠物主人"
+        verbose_name = "主人信息"
         verbose_name_plural = verbose_name
         ordering = ["-created_at"]
 

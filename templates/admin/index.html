@@ -9,7 +9,7 @@
 {% block nav-breadcrumbs %}
 <nav aria-label="导航">
   <ol class="breadcrumbs">
-    <li aria-current="page">首页</li>
+    {% include "admin/includes/ps_nav_home.html" %}
   </ol>
 </nav>
 {% endblock %}
@@ -24,69 +24,11 @@
       <h1>运营看板</h1>
       <p>今日入住、离店与房态一览</p>
     </div>
-    <nav class="ps-shortcuts" aria-label="常用功能">
-      {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>{% endif %}
+    <nav class="ps-shortcuts" aria-label="今日操作">
+      {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
       {% if perms.bookings.add_order %}<a class="ps-btn-primary" href="{% url 'admin:bookings_order_add' %}">录入订单</a>{% endif %}
     </nav>
   </header>
-
-  <section class="ps-modules" aria-label="业务模块">
-    {% if perms.pets.view_pet or perms.pets.view_owner %}
-    <article class="ps-mod">
-      <img src="{% static 'img/stock/pet-golden.jpg' %}" alt="" loading="lazy">
-      <div class="ps-mod-body">
-        <h2>宠物及主人</h2>
-        <p>档案与联系方式</p>
-        <nav class="ps-mod-links" aria-label="宠物及主人">
-          {% if perms.pets.view_pet %}<a class="ps-mod-primary" href="{% url 'admin:pets_pet_changelist' %}">宠物档案</a>{% endif %}
-          {% if perms.pets.view_owner %}<a href="{% url 'admin:pets_owner_changelist' %}">主人信息</a>{% endif %}
-        </nav>
-      </div>
-    </article>
-    {% endif %}
-
-    {% if perms.rooms.view_room %}
-    <article class="ps-mod">
-      <img src="{% static 'img/stock/room-dog-standard.jpg' %}" alt="" loading="lazy">
-      <div class="ps-mod-body">
-        <h2>寄养房间</h2>
-        <p>房价与房态</p>
-        <nav class="ps-mod-links" aria-label="寄养房间">
-          <a class="ps-mod-primary" href="{% url 'admin:rooms_room_changelist' %}">房间列表</a>
-          {% if perms.hospitality.view_holidayrate %}<a href="{% url 'admin:hospitality_holidayrate_changelist' %}">日历房价</a>{% endif %}
-        </nav>
-      </div>
-    </article>
-    {% endif %}
-
-    {% if perms.bookings.view_order %}
-    <article class="ps-mod">
-      <img src="{% static 'img/stock/ambient-suite.jpg' %}" alt="" loading="lazy">
-      <div class="ps-mod-body">
-        <h2>预约与订单</h2>
-        <p>入住与收款</p>
-        <nav class="ps-mod-links" aria-label="预约与订单">
-          <a class="ps-mod-primary" href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>
-          {% if perms.bookings.view_payment %}<a href="{% url 'admin:bookings_payment_changelist' %}">收退款</a>{% endif %}
-        </nav>
-      </div>
-    </article>
-    {% endif %}
-
-    {% if perms.care.view_servicerecord or perms.care.view_review %}
-    <article class="ps-mod">
-      <img src="{% static 'img/stock/service-feeding.jpg' %}" alt="" loading="lazy">
-      <div class="ps-mod-body">
-        <h2>服务与评价</h2>
-        <p>护理与回复</p>
-        <nav class="ps-mod-links" aria-label="服务与评价">
-          {% if perms.care.view_servicerecord %}<a class="ps-mod-primary" href="{% url 'admin:care_servicerecord_changelist' %}">服务记录</a>{% endif %}
-          {% if perms.care.view_review %}<a href="{% url 'admin:care_review_changelist' %}">服务评价</a>{% endif %}
-        </nav>
-      </div>
-    </article>
-    {% endif %}
-  </section>
 
   <section class="ps-metrics" aria-label="今日指标">
     <div class="ps-metric"><span>待入住</span><b>{{ s.arrivals|length }}</b></div>
@@ -114,12 +56,12 @@
       </ul>
     </article>
     <article class="ps-work">
-      <h2>今日离店</h2>
+      <h2>待离店</h2>
       <ul>
         {% for o in s.departures %}
         <li>
           <a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }}</a>
-          <span>{{ o.room.number }} · {{ o.check_out|date:"m-d" }}</span>
+          <span>{{ o.room.number }} · {% if o.check_out < s.today %}逾期 {{ o.check_out|date:"m-d" }}{% else %}今日离店{% endif %}</span>
         </li>
         {% empty %}<li class="ps-empty">暂无</li>{% endfor %}
       </ul>
@@ -136,25 +78,5 @@
       </ul>
     </article>
   </section>
-
-  {% if app_list %}
-  <section class="ps-more" aria-label="更多功能">
-    <h2>更多功能</h2>
-    <div class="ps-more-groups">
-      {% for app in app_list %}
-        {% if app.app_label != 'pets' and app.app_label != 'rooms' and app.app_label != 'bookings' and app.app_label != 'care' and app.app_label != 'stores' %}
-        <div class="ps-more-group">
-          <span class="ps-more-label">{{ app.name }}</span>
-          <div class="ps-more-links">
-            {% for model in app.models %}
-              {% if model.admin_url %}<a href="{{ model.admin_url }}">{{ model.name }}</a>{% endif %}
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
 </div>
 {% endblock %}

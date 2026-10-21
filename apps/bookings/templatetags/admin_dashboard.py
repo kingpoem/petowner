@@ -34,8 +34,12 @@ def dashboard_stats(context):
         .select_related("order__pet")
     )
     return {
+        "today": today,
+        # 待入住：今日应入住；待离店：今日应离 + 已逾期未离
         "arrivals": orders.filter(status=Order.Status.PENDING, check_in=today).select_related("pet", "room"),
-        "departures": orders.filter(status=Order.Status.CHECKED_IN, check_out__lte=today).select_related("pet", "room"),
+        "departures": orders.filter(status=Order.Status.CHECKED_IN, check_out__lte=today)
+        .select_related("pet", "room")
+        .order_by("check_out"),
         "boarding": boarding,
         "capacity": capacity,
         "occupancy": round(boarding * 100 / capacity) if capacity else 0,

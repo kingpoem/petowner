@@ -353,7 +353,7 @@ class Payment(models.Model):
     RETRY_PREFIX = "RETRY-"
 
     class Meta:
-        verbose_name = "收退款流水"
+        verbose_name = "收退款"
         verbose_name_plural = verbose_name
         ordering = ["-created_at"]
 
