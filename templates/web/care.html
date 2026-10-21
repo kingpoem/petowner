@@ -3,79 +3,101 @@
 
 {% block title %}护理服务{% endblock %}
 
+{% block head %}
+<style>
+  /* 护理页关键布局：四图始终同一行（不依赖外部 CSS 缓存） */
+  .care-basics > [class*="col-"] { flex: 0 0 25%; max-width: 25%; }
+  .care-basic-media { aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden; background: #fff1ea; margin-bottom: .75rem; }
+  .care-basic-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .care-basic h3 { font-size: clamp(.85rem, 1.15vw, 1.08rem); margin: 0 0 .25rem; font-weight: 700; }
+  .care-basic p { margin: 0; color: #6b7280; font-size: clamp(.72rem, .95vw, .88rem); line-height: 1.45; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container care-page">
   <header class="page-header care-page-header">
     <p class="eyebrow">Care</p>
     <h1>护理服务</h1>
+    <p class="page-header-desc">日常照料已含在房费里；需要额外护理时，预约时可按次或按晚加购。</p>
   </header>
 
-  <section class="care-block">
+  <section class="care-block" aria-labelledby="care-basics-title">
     <div class="care-block-head">
-      <h2>基础护理</h2>
+      <h2 id="care-basics-title">基础护理</h2>
       <p>已含在房费中 · 每天记录在订单里，可随时查看</p>
     </div>
-    <div class="care-basics">
-      <article class="service-tile">
-        <img src="{% static 'img/stock/service-feeding.jpg' %}" alt="定时喂养" loading="lazy">
-        <div class="body">
+
+    {# 使用 Bootstrap 栅格，确保四图始终同一行 #}
+    <div class="row g-3 g-lg-4 care-basics">
+      <div class="col-3">
+        <article class="care-basic">
+          <div class="care-basic-media">
+            <img src="{% static 'img/stock/service-feeding.jpg' %}" alt="定时定量喂养" loading="lazy" width="400" height="400">
+          </div>
           <h3>定时定量喂养</h3>
           <p>按家中习惯喂食，记录进食量</p>
-        </div>
-      </article>
-      <article class="service-tile">
-        <img src="{% static 'img/stock/service-walk.jpg' %}" alt="户外遛弯" loading="lazy">
-        <div class="body">
+        </article>
+      </div>
+      <div class="col-3">
+        <article class="care-basic">
+          <div class="care-basic-media">
+            <img src="{% static 'img/stock/service-walk.jpg' %}" alt="每日户外遛弯" loading="lazy" width="400" height="400">
+          </div>
           <h3>每日户外遛弯</h3>
           <p>狗狗每天两次牵引散步</p>
-        </div>
-      </article>
-      <article class="service-tile">
-        <img src="{% static 'img/stock/service-grooming.jpg' %}" alt="清洁洗护" loading="lazy">
-        <div class="body">
+        </article>
+      </div>
+      <div class="col-3">
+        <article class="care-basic">
+          <div class="care-basic-media">
+            <img src="{% static 'img/stock/service-grooming.jpg' %}" alt="清洁与洗护" loading="lazy" width="400" height="400">
+          </div>
           <h3>清洁与洗护</h3>
           <p>梳毛擦脚，离店前洗澡吹干</p>
-        </div>
-      </article>
-      <article class="service-tile">
-        <img src="{% static 'img/stock/service-health.jpg' %}" alt="健康观察" loading="lazy">
-        <div class="body">
+        </article>
+      </div>
+      <div class="col-3">
+        <article class="care-basic">
+          <div class="care-basic-media">
+            <img src="{% static 'img/stock/service-health.jpg' %}" alt="健康观察" loading="lazy" width="400" height="400">
+          </div>
           <h3>健康观察</h3>
           <p>异常即时提醒并联系主人</p>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
   </section>
 
   {% if addons %}
-  <section class="care-block">
+  <section class="care-block" aria-labelledby="care-addons-title">
     <div class="care-block-head">
-      <h2>可选加购</h2>
+      <h2 id="care-addons-title">可选加购</h2>
       <p>预约时勾选即可，按次或按晚计费</p>
     </div>
-    <ul class="care-addon-list">
+    <div class="row g-3 care-addon-grid">
       {% for service in addons %}
-      <li class="care-addon-row">
-        <div class="care-addon-main">
+      <div class="col-md-6">
+        <div class="care-addon-item">
           <span class="care-addon-icon" aria-hidden="true"><i class="bi {{ service.icon|default:'bi-stars' }}"></i></span>
-          <div>
+          <div class="care-addon-copy">
             <div class="care-addon-name">
               {{ service.name }}
               {% if service.species == 'dog' %}<span class="care-tag">仅狗狗</span>
               {% elif service.species == 'cat' %}<span class="care-tag">仅猫咪</span>{% endif %}
             </div>
-            <p>{{ service.summary }}</p>
+            {% if service.summary %}<p>{{ service.summary }}</p>{% endif %}
+          </div>
+          <div class="care-addon-price">
+            <strong>¥{{ service.price|floatformat:"-2" }}</strong>
+            <span>/{% if service.billing == 'night' %}晚{% else %}次{% endif %}</span>
           </div>
         </div>
-        <div class="care-addon-price">
-          ¥{{ service.price|floatformat:"-2" }}
-          <small>/{% if service.billing == 'night' %}晚{% else %}次{% endif %}</small>
-        </div>
-      </li>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
     <div class="care-footer-cta">
-      <a class="btn btn-primary" href="{% url 'web:booking_create' %}">去预约并加购</a>
+      <a class="btn btn-primary btn-lg" href="{% url 'web:booking_create' %}">去预约并加购</a>
     </div>
   </section>
   {% endif %}

@@ -1249,17 +1249,17 @@ h1, h2, h3, h4, h5 {
 
 /* ---------- 护理服务页 ---------- */
 .care-page {
-  padding-bottom: 4rem;
+  padding-bottom: 4.5rem;
 }
 
 .care-page-header {
-  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
 }
 
 .care-block + .care-block {
   margin-top: 2.75rem;
   padding-top: 2.5rem;
-  border-top: 1px solid rgba(31, 42, 68, 0.08);
+  border-top: 1px solid var(--ps-border);
 }
 
 .care-block-head {
@@ -1267,7 +1267,7 @@ h1, h2, h3, h4, h5 {
 }
 
 .care-block-head h2 {
-  font-size: clamp(1.3rem, 2.2vw, 1.65rem);
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
   margin: 0 0 0.35rem;
 }
 
@@ -1275,78 +1275,82 @@ h1, h2, h3, h4, h5 {
   margin: 0;
   color: var(--ps-muted);
   font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.care-basics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
+.care-basic {
+  height: 100%;
 }
 
-@media (min-width: 992px) {
-  .care-basics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-  }
+.care-basic-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--ps-primary-soft);
+  margin-bottom: 0.75rem;
+  box-shadow: 0 8px 20px rgba(31, 42, 68, 0.08);
 }
 
-.care-basics .service-tile {
-  min-height: 210px;
-  border-radius: 20px;
+.care-basic-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.45s ease;
 }
 
-.care-basics .service-tile h3 {
-  font-size: 1.05rem;
+.care-basic:hover .care-basic-media img {
+  transform: scale(1.05);
+}
+
+.care-basic h3 {
+  font-size: clamp(0.85rem, 1.15vw, 1.08rem);
   margin: 0 0 0.25rem;
+  line-height: 1.35;
   font-weight: 700;
 }
 
-.care-basics .service-tile p {
+.care-basic p {
   margin: 0;
-  font-size: 0.82rem;
-  opacity: 0.82;
-  line-height: 1.4;
+  color: var(--ps-muted);
+  font-size: clamp(0.72rem, 0.95vw, 0.88rem);
+  line-height: 1.45;
 }
 
-.care-addon-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid rgba(31, 42, 68, 0.08);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.78);
-  overflow: hidden;
-}
-
-.care-addon-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.05rem 1.2rem;
-  border-top: 1px solid rgba(31, 42, 68, 0.06);
-}
-
-.care-addon-row:first-child {
-  border-top: 0;
-}
-
-.care-addon-main {
+.care-addon-item {
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
-  min-width: 0;
+  height: 100%;
+  padding: 1.1rem 1.15rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--ps-border);
+  box-shadow: 0 4px 14px rgba(31, 42, 68, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.care-addon-item:hover {
+  border-color: rgba(242, 112, 63, 0.35);
+  box-shadow: 0 10px 24px rgba(31, 42, 68, 0.08);
 }
 
 .care-addon-icon {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   display: grid;
   place-items: center;
   background: var(--ps-primary-soft);
   color: var(--ps-primary-dark);
   flex: none;
+  font-size: 1.1rem;
+}
+
+.care-addon-copy {
+  flex: 1;
+  min-width: 0;
 }
 
 .care-addon-name {
@@ -1356,17 +1360,18 @@ h1, h2, h3, h4, h5 {
   gap: 0.4rem;
   font-weight: 700;
   margin-bottom: 0.2rem;
+  line-height: 1.35;
 }
 
-.care-addon-main p {
+.care-addon-copy p {
   margin: 0;
   color: var(--ps-muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   line-height: 1.45;
 }
 
 .care-tag {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--ps-primary-dark);
   background: var(--ps-primary-soft);
@@ -1375,19 +1380,40 @@ h1, h2, h3, h4, h5 {
 }
 
 .care-addon-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
   flex: none;
-  font-weight: 700;
-  color: var(--ps-ink);
-  text-align: right;
+  line-height: 1.2;
   white-space: nowrap;
+  padding-top: 0.1rem;
 }
 
-.care-addon-price small {
+.care-addon-price strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ps-ink);
+}
+
+.care-addon-price span {
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--ps-muted);
 }
 
 .care-footer-cta {
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
   text-align: center;
+}
+
+@media (max-width: 575.98px) {
+  .care-basic-media {
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+  }
+
+  .care-addon-item {
+    padding: 0.95rem 0.9rem;
+  }
 }
