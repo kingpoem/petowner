@@ -75,7 +75,6 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = (
         "order_no",
         "amount",
-        "discount",
         "payment_status",
         "status",
         "source",
@@ -93,7 +92,7 @@ class OrderAdmin(admin.ModelAdmin):
             "费用与状态",
             {
                 "fields": (
-                    ("amount", "discount"),
+                    "amount",
                     ("payment_status", "status"),
                     "source",
                     ("cancel_reason", "cancel_fee"),

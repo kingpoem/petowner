@@ -10,7 +10,6 @@
       <div class="pay-success-badge mb-3"><i class="bi bi-check2-circle"></i> 预约已创建</div>
       <div class="text-muted small">订单 {{ order.order_no }}{% if order.payment_status == 'partial' %} · 改期补差价{% endif %}</div>
       <div class="display-6 fw-bold text-primary my-2">¥{{ order.balance_due }}</div>
-      {% if order.discount %}<div class="small text-success mb-1">已含优惠 ¥{{ order.discount }}</div>{% endif %}
       {% if order.payment_status == 'partial' %}<div class="small text-muted mb-1">订单金额 ¥{{ order.amount }}，已付 ¥{{ order.net_paid }}</div>{% endif %}
       <div class="small text-muted">{{ order.pet.name }} · {{ order.room.display_name }} · {{ order.check_in|date:"n月j日" }} - {{ order.check_out|date:"n月j日" }}（{{ order.days }} 晚）</div>
       {% if order.pay_deadline %}<div class="small text-danger mt-2"><i class="bi bi-clock me-1"></i>请在 {{ order.pay_deadline|date:"H:i" }} 前完成支付，超时订单将自动取消</div>{% endif %}

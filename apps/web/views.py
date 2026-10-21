@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg, Count, Q
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -20,11 +20,8 @@ from django.views.decorators.http import require_POST
 
 from apps.bookings.models import Order, find_available_rooms
 from apps.care.models import Review
-from apps.hospitality.house import house_board
-from apps.hospitality.models import StoreNotice
-from apps.hospitality.pulse import weave
-from apps.hospitality.services import ensure_member, preview_reschedule, price_booking
-from apps.notifications.models import Notification
+from apps.hospitality.services import preview_reschedule, price_booking
+from apps.images import thumbnail_url
 from apps.pets.models import Pet
 from apps.rooms.models import Room
 from apps.rooms.pricing import quote
@@ -33,6 +30,8 @@ from .forms import (
     BookingForm,
     CancelForm,
     LoginForm,
+    OwnerPasswordChangeForm,
+    OwnerSetPasswordForm,
     PayForm,
     PetForm,
     ProfileForm,
@@ -83,16 +82,12 @@ def _listed_rooms():
 def home(request):
     rating = Review.objects.aggregate(avg=Avg("rating"), total=Count("id"))
     rooms = _listed_rooms()
-    tomorrow = timezone.localdate() + timedelta(days=1)
     context = {
         "rooms": rooms[:6],
         "room_count": rooms.count(),
         "reviews": _public_reviews()[:6],
         "avg_rating": rating["avg"],
         "review_count": rating["total"],
-        "search_form": SearchForm(initial={"check_in": tomorrow, "check_out": tomorrow + timedelta(days=3)}),
-        "notices": StoreNotice.published()[:3],
-        "board": house_board(),
     }
     return render(request, "web/home.html", context)
 
@@ -135,6 +130,18 @@ def room_detail(request, pk):
         "web/room_detail.html",
         {"room": room, "form": form, "quote": room_quote, "available": available, "reviews": reviews},
     )
+
+
+def care(request):
+    """护理服务介绍：基础护理与可选加购。"""
+    from apps.hospitality.models import AddonService
+
+    addons = AddonService.objects.filter(is_active=True).order_by("sort", "pk")
+    return render(request, "web/care.html", {"addons": addons})
+
+
+def faq(request):
+    return render(request, "web/faq.html")
 
 
 def page(request, name):
@@ -187,6 +194,7 @@ class BootstrapFormMixin:
 
 
 class PasswordChangeView(BootstrapFormMixin, auth_views.PasswordChangeView):
+    form_class = OwnerPasswordChangeForm
     template_name = "web/account/password_change.html"
     success_url = reverse_lazy("web:profile")
 
@@ -218,6 +226,7 @@ class PasswordResetDoneView(auth_views.PasswordResetDoneView):
 
 
 class PasswordResetConfirmView(BootstrapFormMixin, auth_views.PasswordResetConfirmView):
+    form_class = OwnerSetPasswordForm
     template_name = "web/account/password_reset_confirm.html"
     success_url = reverse_lazy("web:password_reset_complete")
 
@@ -253,14 +262,10 @@ def profile(request):
 def dashboard(request):
     owner = request.owner
     orders = Order.objects.filter(pet__owner=owner).select_related("pet", "room")
-    today = timezone.localdate()
     context = {
         "active_orders": orders.filter(status__in=Order.ACTIVE_STATUSES).order_by("check_in"),
         "pets": owner.pets.all(),
         "to_review": orders.filter(status=Order.Status.COMPLETED, review__isnull=True)[:3],
-        "notifications": request.user.notifications.filter(is_read=False)[:5],
-        "vaccine_warnings": [p for p in owner.pets.all() if not p.vaccine_valid_through(today + timedelta(days=30))],
-        "membership": ensure_member(owner),
     }
     return render(request, "web/dashboard.html", context)
 
@@ -325,7 +330,7 @@ def booking_create(request):
     return render(
         request,
         "web/orders/create.html",
-        {"form": form, "quote": booking_quote, "stay": stay, "weave": _company_weave(params, request.owner)},
+        {"form": form, "quote": booking_quote, "stay": stay},
     )
 
 
@@ -336,13 +341,8 @@ def _owner_order(request, order_no):
 @owner_required
 def order_list(request):
     orders = Order.objects.filter(pet__owner=request.owner).select_related("pet", "room")
-    status = request.GET.get("status", "")
-    if status in Order.Status.values:
-        orders = orders.filter(status=status)
     page_obj = Paginator(orders, 10).get_page(request.GET.get("page"))
-    return render(
-        request, "web/orders/list.html", {"page_obj": page_obj, "status": status, "statuses": Order.Status.choices}
-    )
+    return render(request, "web/orders/list.html", {"page_obj": page_obj})
 
 
 @owner_required
@@ -500,7 +500,6 @@ def _stay_for(params, owner, order=None):
         room = Room.objects.get(pk=params.get("room"))
         check_in = date.fromisoformat(str(params.get("check_in")))
         check_out = date.fromisoformat(str(params.get("check_out")))
-        points = int(params.get("redeem_points") or 0)
     except (Room.DoesNotExist, ValueError, TypeError):
         return booking_quote, None
     pet = None
@@ -512,9 +511,6 @@ def _stay_for(params, owner, order=None):
         check_in=check_in,
         check_out=check_out,
         addon_ids=_param_list(params, "addons"),
-        coupon_code=params.get("coupon_code") or "",
-        redeem_points=points,
-        use_member=str(params.get("use_member") or "") in {"1", "on", "true", "True"},
         owner=owner,
         pet=pet,
     )
@@ -539,36 +535,7 @@ def quote_preview(request):
     order = _owner_order(request, request.GET["order"]) if request.GET.get("order") else None
     booking_quote, stay = _stay_for(request.GET, request.owner, order)
     context = _quote_context(booking_quote, order, stay)
-    context["weave"] = _company_weave(request.GET, request.owner)
     return render(request, "web/orders/_quote.html", context)
-
-
-def _company_weave(params, owner):
-    if owner is None or not hasattr(params, "get"):
-        return None
-    try:
-        check_in = date.fromisoformat(str(params.get("check_in") or ""))
-        check_out = date.fromisoformat(str(params.get("check_out") or ""))
-    except ValueError:
-        return None
-    if not (0 < (check_out - check_in).days <= settings.MAX_BOARDING_DAYS):
-        return None
-    pet_id = params.get("pet")
-    if not pet_id or not str(pet_id).isdigit():
-        return None
-    pet = owner.pets.filter(pk=int(pet_id)).first()
-    if pet is None:
-        return None
-    company = (
-        Order.objects.filter(
-            status__in=Order.ACTIVE_STATUSES,
-            check_in__lt=check_out,
-            check_out__gt=check_in,
-        )
-        .exclude(pet_id=pet.pk)
-        .select_related("pet")
-    )
-    return weave(pet.species, pet.temperament, [(row.pet.species, row.pet.temperament) for row in company])
 
 
 @owner_required
@@ -583,30 +550,3 @@ def order_review(request, order_no):
         messages.success(request, "感谢您的评价！")
         return redirect(order)
     return render(request, "web/orders/review.html", {"order": order, "form": form})
-
-
-# ---------- 通知 ----------
-
-
-@owner_required
-def notification_list(request):
-    page_obj = Paginator(request.user.notifications.all(), 15).get_page(request.GET.get("page"))
-    return render(request, "web/notifications.html", {"page_obj": page_obj})
-
-
-@owner_required
-def notification_open(request, pk):
-    note = get_object_or_404(Notification, pk=pk, user=request.user)
-    if not note.is_read:
-        note.is_read = True
-        note.save(update_fields=["is_read"])
-    if note.link and url_has_allowed_host_and_scheme(note.link, allowed_hosts={request.get_host()}):
-        return redirect(note.link)
-    return redirect("web:notifications")
-
-
-@owner_required
-@require_POST
-def notification_read_all(request):
-    request.user.notifications.filter(is_read=False).update(is_read=True)
-    return redirect("web:notifications")

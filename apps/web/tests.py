@@ -18,7 +18,6 @@ from PIL import Image
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review
 from apps.images import thumbnail_name, thumbnail_url
-from apps.notifications.models import Notification
 from apps.security import sms
 from apps.testing import PASSWORD, days, make_order, make_owner, make_pet, make_room
 
@@ -109,6 +108,11 @@ class AccountTests(TestCase):
         self.assertContains(self._register(sms_code=code, password2="other"), "两次输入的密码不一致")
         response = self._register(sms_code=code)
         self.assertRedirects(response, reverse("web:pet_create"), fetch_redirect_response=False)
+
+    def test_register_accepts_any_password(self):
+        response = self._register(password1="1", password2="1")
+        self.assertRedirects(response, reverse("web:pet_create"), fetch_redirect_response=False)
+        self.assertTrue(self.client.login(username="13711112222", password="1"))
 
     def test_password_reset_by_sms(self):
         owner = make_owner()
@@ -223,7 +227,6 @@ class OwnerAreaTests(TestCase):
             "pet_list",
             "pet_create",
             "order_list",
-            "notifications",
             "profile",
             "password_change",
         ]:
@@ -240,7 +243,6 @@ class OwnerAreaTests(TestCase):
             "weight": "11",
             "temperament": "gentle",
             "health_status": "健康",
-            "vaccine_expiry": days(200).isoformat(),
         }
         response = self.client.post(reverse("web:pet_create"), data)
         self.assertRedirects(response, reverse("web:pet_list"), fetch_redirect_response=False)
@@ -309,7 +311,7 @@ class OwnerAreaTests(TestCase):
         self.assertNotContains(response, "<html")
         for bad in ({"room": "x"}, {"room": self.room.pk, "check_in": days(3), "check_out": days(1)}):
             with self.subTest(params=bad):
-                self.assertContains(self.client.get(url, bad), "选择房间与日期后显示逐晚价格")
+                self.assertContains(self.client.get(url, bad), "选择房间与日期后显示费用明细")
 
     def test_quote_fragment_shows_reschedule_difference(self):
         order = make_order(pet=self.pet, room=self.room, start=2, nights=2)
@@ -387,25 +389,6 @@ class OwnerAreaTests(TestCase):
             {"rating": 4, "content": "很好", "feedback": "", "is_public": "on"},
         )
         self.assertEqual(order.review.rating, 4)
-
-    def test_notification_open_marks_read_and_blocks_external_links(self):
-        safe = Notification.objects.create(user=self.owner.user, title="a", link=reverse("web:order_list"))
-        evil = Notification.objects.create(user=self.owner.user, title="b", link="https://evil.example.com/")
-        self.assertRedirects(
-            self.client.get(reverse("web:notification_open", args=[safe.pk])),
-            reverse("web:order_list"),
-            fetch_redirect_response=False,
-        )
-        safe.refresh_from_db()
-        self.assertTrue(safe.is_read)
-        self.assertRedirects(
-            self.client.get(reverse("web:notification_open", args=[evil.pk])),
-            reverse("web:notifications"),
-            fetch_redirect_response=False,
-        )
-        self.client.post(reverse("web:notification_read_all"))
-        self.assertFalse(Notification.objects.filter(user=self.owner.user, is_read=False).exists())
-
 
 def make_photo(size=(3000, 2000), orientation=6, fmt="JPEG") -> SimpleUploadedFile:
     image = Image.new("RGB", size, (200, 120, 80))
@@ -490,7 +473,6 @@ class AdminTests(TestCase):
             reverse("admin:rooms_room_changelist"),
             reverse("admin:care_servicerecord_changelist"),
             reverse("admin:care_review_changelist"),
-            reverse("admin:notifications_notification_changelist"),
         ]:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)

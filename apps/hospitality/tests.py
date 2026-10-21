@@ -8,10 +8,9 @@ from apps.bookings.models import Order
 from apps.rooms.pricing import quote
 from apps.testing import days, make_order, make_owner, make_pet, make_room
 
-from .models import AddonService, Billing, Coupon, HolidayRate, StaffMember, VaccineRecord
+from .models import AddonService, Billing, HolidayRate
 from .pulse import breathe, fold_clock, layout_atlas, quiet_index, quiet_line, weave
 from .seed import seed_catalog
-from .services import ensure_member
 
 
 class CommercePricingTests(TestCase):
@@ -27,13 +26,6 @@ class CommercePricingTests(TestCase):
             price=Decimal("50"),
             billing=Billing.ONCE,
         )
-        Coupon.objects.create(
-            code="WELCOME",
-            name="新客立减",
-            kind=Coupon.Kind.AMOUNT,
-            value=Decimal("20"),
-            min_spend=Decimal("100"),
-        )
 
     def _book(self, **extra):
         data = {
@@ -46,39 +38,11 @@ class CommercePricingTests(TestCase):
         data.update(extra)
         return self.client.post(reverse("web:booking_create"), data)
 
-    def test_addon_and_coupon_are_included(self):
-        self._book(addons=[self.service.pk], coupon_code="welcome")
+    def test_addon_is_included(self):
+        self._book(addons=[self.service.pk])
         order = Order.objects.get()
-        self.assertEqual(order.amount, Decimal("230.00"))
-        self.assertEqual(order.coupon_discount, Decimal("20.00"))
+        self.assertEqual(order.amount, Decimal("250.00"))
         self.assertEqual(order.addons.get().line_total, Decimal("50.00"))
-        self.assertEqual(Coupon.objects.get().used_count, 1)
-
-    def test_cancel_returns_coupon_use(self):
-        self._book(coupon_code="WELCOME")
-        order = Order.objects.get()
-        order.cancel("改计划")
-        self.assertEqual(Coupon.objects.get().used_count, 0)
-
-    def test_points_redeem_and_refund(self):
-        account = ensure_member(self.owner)
-        account.points = 500
-        account.save(update_fields=["points"])
-        self._book(redeem_points=200)
-        order = Order.objects.get()
-        self.assertEqual((order.amount, order.points_redeemed), (Decimal("198.00"), 200))
-        account.refresh_from_db()
-        self.assertEqual(account.points, 300)
-        order.cancel("不去了")
-        account.refresh_from_db()
-        self.assertEqual(account.points, 500)
-
-    def test_member_rate_applies_only_when_chosen(self):
-        account = ensure_member(self.owner)
-        account.lifetime_points = 2000
-        account.save(update_fields=["lifetime_points"])
-        self._book(use_member="on")
-        self.assertEqual(Order.objects.get().amount, Decimal("190.00"))
 
     def test_holiday_rate_changes_nightly_quote(self):
         HolidayRate.objects.create(day=days(1), label="店庆", multiplier=Decimal("1.50"))
@@ -86,53 +50,23 @@ class CommercePricingTests(TestCase):
         self.assertEqual(priced.total, Decimal("250.00"))
         self.assertEqual(priced.surcharged_nights[0].rule, "店庆")
 
-    def test_vaccine_record_refreshes_pet_expiry(self):
-        record = VaccineRecord.objects.create(
-            pet=self.pet,
-            name="狂犬疫苗",
-            injected_on=days(-10),
-            expires_on=days(400),
-        )
-        self.pet.refresh_from_db()
-        self.assertEqual(self.pet.vaccine_expiry, record.expires_on)
-
     def test_catalog_pages(self):
         seed_catalog()
-        self.assertContains(self.client.get(reverse("hospitality:services")), "视频探视")
-        self.assertContains(self.client.get(reverse("hospitality:membership")), "积分")
-        response = self.client.post(
-            reverse("hospitality:waitlist"),
-            {"pet": self.pet.pk, "room_type": "suite", "check_in": days(3), "check_out": days(6), "note": "想要套房"},
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(self.owner.waitlist.get().status, "waiting")
+        # 旧 /services/ 入口并入护理服务页
+        response = self.client.get(reverse("hospitality:services"), follow=True)
+        self.assertContains(response, "视频探视")
+        self.assertContains(response, "护理服务")
 
 
 class CatalogAuthTests(TestCase):
-    def test_membership_requires_login(self):
-        response = self.client.get(reverse("hospitality:membership"))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("/account/login/", response["Location"])
-
     def test_services_are_public(self):
-        self.assertEqual(self.client.get(reverse("hospitality:services")).status_code, 200)
+        response = self.client.get(reverse("hospitality:services"), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "护理服务")
         self.assertFalse(get_user_model().objects.exists())
 
 
 class HouseAndReceiptTests(TestCase):
-    def test_house_board_is_public_and_hides_phones(self):
-        owner = make_owner(phone="13811112222")
-        pet = make_pet(owner=owner, name="团子")
-        make_order(pet=pet, room=make_room(), status=Order.Status.CHECKED_IN)
-        StaffMember.objects.create(name="赵护理", role=StaffMember.Role.CARER, phone="13900001111", skills="猫咪")
-        response = self.client.get(reverse("hospitality:house"))
-        self.assertContains(response, "团子")
-        self.assertContains(response, "房态呼吸")
-        self.assertContains(response, "日课折叠")
-        self.assertContains(response, "赵护理")
-        self.assertNotContains(response, "13811112222")
-        self.assertNotContains(response, "13900001111")
-
     def test_receipt_stays_with_the_owner(self):
         owner = make_owner()
         order = make_order(pet=make_pet(owner=owner, name="布丁"))
@@ -142,23 +76,6 @@ class HouseAndReceiptTests(TestCase):
         response = self.client.get(url)
         self.assertContains(response, "布丁")
         self.assertContains(response, order.order_no)
-
-    def test_quote_weave_hides_other_pets_names(self):
-        from apps.pets.models import Species
-
-        owner = make_owner()
-        guest = make_pet(owner=owner, species=Species.DOG, temperament="gentle")
-        neighbor = make_pet(name="雪球", species=Species.CAT, temperament="timid")
-        make_order(pet=neighbor, start=1, nights=4, status=Order.Status.CHECKED_IN)
-        self.client.force_login(owner.user)
-        response = self.client.get(
-            reverse("web:quote_preview"),
-            {"pet": guest.pk, "room": make_room().pk, "check_in": days(1), "check_out": days(3)},
-        )
-        self.assertContains(response, "入住织体")
-        self.assertContains(response, "胆小的猫")
-        self.assertNotContains(response, "雪球")
-
 
 class _Room:
     def __init__(self, pk, pet_type, room_type, number, name):

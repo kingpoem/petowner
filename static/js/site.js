@@ -7,6 +7,46 @@
   ready(() => {
     document.querySelectorAll(".toast").forEach((el) => new bootstrap.Toast(el).show());
 
+    // 锚点滚动：布局/图片稳定后再定位，避免首次落到错误位置
+    const settleHashScroll = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const go = () => el.scrollIntoView({ behavior: "auto", block: "start" });
+      go();
+      requestAnimationFrame(go);
+      window.setTimeout(go, 120);
+      window.setTimeout(go, 400);
+      if (document.readyState !== "complete") {
+        window.addEventListener(
+          "load",
+          () => {
+            go();
+            window.setTimeout(go, 200);
+          },
+          { once: true },
+        );
+      }
+    };
+    const hashId = () =>
+      location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : "";
+    if (hashId()) settleHashScroll(hashId());
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest("a[href]");
+      if (!link) return;
+      let url;
+      try {
+        url = new URL(link.href, location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== location.origin || url.pathname !== location.pathname || !url.hash) return;
+      const id = decodeURIComponent(url.hash.slice(1));
+      if (!document.getElementById(id)) return;
+      e.preventDefault();
+      if (location.hash !== url.hash) history.pushState(null, "", url.hash);
+      settleHashScroll(id);
+    });
+
     // 危险操作二次确认：<form data-confirm="确定…？">
     document.addEventListener("submit", (e) => {
       const message = e.target.dataset?.confirm;
@@ -91,20 +131,36 @@
       });
     }
 
-    // 实时报价：房间/日期/优惠码/积分变化时局部刷新费用明细
+    // 实时报价：房间/日期/加购变化时局部刷新费用明细
     document.querySelectorAll("form[data-quote-url]").forEach((form) => {
       const target = document.querySelector(form.dataset.quoteTarget);
-      const fields = ["pet", "room", "check_in", "check_out", "coupon_code", "redeem_points"];
+      const fields = ["pet", "room", "check_in", "check_out"];
       let controller;
       let timer;
+
+      const syncAddons = () => {
+        const pet = form.elements.pet;
+        const selected = pet?.selectedOptions?.[0];
+        const species = selected?.dataset?.species || "";
+        form.querySelectorAll(".addon-option[data-species]").forEach((row) => {
+          const fit = !species || row.dataset.species === "any" || row.dataset.species === species;
+          row.hidden = !fit;
+          if (!fit) {
+            const box = row.querySelector('input[type="checkbox"]');
+            if (box?.checked) box.checked = false;
+          }
+        });
+      };
+
       const refresh = async () => {
         const params = new URLSearchParams();
         fields.forEach((name) => {
           const value = form.elements[name]?.value;
           if (value) params.set(name, value);
         });
-        if (form.elements.use_member?.checked) params.set("use_member", "on");
-        form.querySelectorAll('input[name="addons"]:checked').forEach((el) => params.append("addons", el.value));
+        form.querySelectorAll('input[name="addons"]:checked').forEach((el) => {
+          if (!el.closest(".addon-option")?.hidden) params.append("addons", el.value);
+        });
         if (form.dataset.order) params.set("order", form.dataset.order);
         controller?.abort();
         controller = new AbortController();
@@ -131,38 +187,14 @@
         el.addEventListener("change", schedule);
         el.addEventListener("input", schedule);
       });
-      form.addEventListener("change", (event) => {
-        if (event.target.name === "addons" || event.target.name === "use_member") schedule();
+      form.elements.pet?.addEventListener("change", () => {
+        syncAddons();
+        schedule();
       });
-    });
-
-    // 日课折叠：拖动钟点，房间改用那个时刻之前最近的一条护理。
-    document.querySelectorAll("[data-breath-replay]").forEach((root) => {
-      const node = document.getElementById(root.dataset.breathReplay);
-      const slider = root.querySelector('input[type="range"]');
-      const clock = root.querySelector("[data-breath-clock]");
-      if (!node || !slider || !clock) return;
-      const data = JSON.parse(node.textContent);
-      const paint = () => {
-        const hour = String(slider.value);
-        clock.textContent = `${hour.padStart(2, "0")}:00`;
-        const frame = data.frames[hour] || {};
-        root.querySelectorAll(".kennel.live").forEach((room) => {
-          const state = frame[room.dataset.room];
-          const caption = room.querySelector(".kennel-caption");
-          if (!state) {
-            room.style.setProperty("--breath", `${data.rest}s`);
-            room.classList.remove("alert");
-            if (caption) caption.textContent = "安稳";
-            return;
-          }
-          room.style.setProperty("--breath", `${state.breath}s`);
-          room.classList.toggle("alert", Boolean(state.alert));
-          if (caption) caption.textContent = state.caption;
-        });
-      };
-      slider.addEventListener("input", paint);
-      paint();
+      form.addEventListener("change", (event) => {
+        if (event.target.name === "addons") schedule();
+      });
+      syncAddons();
     });
   });
 })();

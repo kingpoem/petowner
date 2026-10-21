@@ -5,12 +5,6 @@
 
 {% block main %}
 <h1 class="h3 mb-4">我的订单</h1>
-<ul class="nav nav-pills mb-4 gap-1">
-  <li class="nav-item"><a class="nav-link {% if not status %}active{% endif %}" href="?">全部</a></li>
-  {% for value, label in statuses %}
-    <li class="nav-item"><a class="nav-link {% if status == value %}active{% endif %}" href="?status={{ value }}">{{ label }}</a></li>
-  {% endfor %}
-</ul>
 {% for order in page_obj %}
   <a href="{{ order.get_absolute_url }}" class="ps-card hover-lift d-flex align-items-center gap-3 p-3 mb-3 text-decoration-none text-body">
     <img class="avatar-lg" src="{% image_url order.room size=160 %}" alt="{{ order.room.display_name }}">
@@ -29,9 +23,9 @@
 {% endfor %}
 {% if page_obj.has_other_pages %}
 <nav class="mt-4"><ul class="pagination justify-content-center">
-  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?status={{ status }}&page={{ page_obj.previous_page_number }}">上一页</a></li>{% endif %}
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a></li>{% endif %}
   <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?status={{ status }}&page={{ page_obj.next_page_number }}">下一页</a></li>{% endif %}
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a></li>{% endif %}
 </ul></nav>
 {% endif %}
 {% endblock %}

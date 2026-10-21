@@ -1,34 +1,34 @@
 {% if quote %}
   <div class="small">
-    {% for night in quote.nights %}
-      <div class="d-flex justify-content-between py-1">
-        <span>{{ night.day|date:"n月j日 D" }}{% if night.rule %} <span class="badge text-bg-warning">{{ night.rule }}</span>{% endif %}</span><span>¥{{ night.price }}</span>
-      </div>
-    {% endfor %}
-    {% if quote.discount %}<div class="d-flex justify-content-between py-1 text-success"><span>{{ quote.discount_label }}</span><span>-¥{{ quote.discount }}</span></div>{% endif %}
+    <div class="d-flex justify-content-between py-1 gap-2">
+      <span>
+        房费
+        <span class="text-muted">· {{ quote.days }}晚</span>
+        {% if quote.surcharged_nights %}
+          <span class="badge text-bg-warning">含节假日加价</span>
+        {% endif %}
+      </span>
+      <span>¥{{ quote.total }}</span>
+    </div>
     {% if stay %}
       {% for line in stay.lines %}
-        <div class="d-flex justify-content-between py-1"><span>{{ line.service.name }}</span><span>¥{{ line.line_total }}</span></div>
+        <div class="d-flex justify-content-between py-1 gap-2">
+          <span>
+            {{ line.service.name }}
+            <span class="text-muted">
+              {% if line.service.billing == "night" %}
+                · ¥{{ line.unit_price }}×{{ line.nights }}晚
+              {% else %}
+                · ¥{{ line.unit_price }}/次
+              {% endif %}
+            </span>
+          </span>
+          <span>¥{{ line.line_total }}</span>
+        </div>
       {% endfor %}
-      {% if stay.coupon_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>{{ stay.coupon_label|default:"优惠码" }}</span><span>-¥{{ stay.coupon_discount }}</span></div>{% endif %}
-      {% if stay.member_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>{{ stay.member_label|default:"会员折扣" }}</span><span>-¥{{ stay.member_discount }}</span></div>{% endif %}
-      {% if stay.points_discount %}<div class="d-flex justify-content-between py-1 text-success"><span>积分抵扣 {{ stay.points_redeemed }}</span><span>-¥{{ stay.points_discount }}</span></div>{% endif %}
       {% for error in stay.errors %}<div class="text-danger small py-1">{{ error }}</div>{% endfor %}
     {% endif %}
   </div>
-  {% if weave %}
-  <div class="weave mt-3">
-    <div class="d-flex justify-content-between small mb-1">
-      <span class="fw-semibold">入住织体</span>
-      <span>{{ weave.score }} · {{ weave.line }}</span>
-    </div>
-    {% for thread in weave.threads %}
-      <span class="weave-thread tone-{{ thread.tone }}">{{ thread.label }}</span>
-    {% empty %}
-      <div class="small text-muted">这几天没有别的住客叠进来</div>
-    {% endfor %}
-  </div>
-  {% endif %}
   <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-2">
     <span>共 {{ quote.days }} 晚</span>
     <span class="price">¥{{ payable|default:quote.total }}</span>
@@ -46,5 +46,5 @@
     </div>
   {% endif %}
 {% else %}
-  <p class="text-muted small mb-0">选择房间与日期后显示逐晚价格</p>
+  <p class="text-muted small mb-0">选择房间与日期后显示费用明细</p>
 {% endif %}

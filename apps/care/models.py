@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from apps.bookings.models import Order
 from apps.images import OptimizedImageField
-from apps.notifications.models import Notification
 from apps.notifications.services import notify_owner
 
 
@@ -90,7 +89,7 @@ class ServiceRecord(models.Model):
                 f"{pet.name} 健康状况提醒",
                 f"护理人员 {self.staff} 记录到异常：{detail}。我们会持续观察并与您联系。",
                 self.order.get_absolute_url(),
-                Notification.Level.DANGER,
+                "danger",
                 sms_event="health",
             )
         else:

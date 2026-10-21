@@ -41,6 +41,7 @@ class Owner(models.Model):
     address = models.CharField("地址", max_length=200, blank=True)
     emergency_contact = models.CharField("紧急联系人", max_length=50, blank=True)
     emergency_phone = models.CharField("紧急联系电话", max_length=20, blank=True)
+    avatar = OptimizedImageField("头像", upload_to="avatars/%Y/%m/", blank=True, max_side=640)
     created_at = models.DateTimeField("登记时间", auto_now_add=True)
 
     class Meta:
@@ -77,9 +78,12 @@ class Pet(models.Model):
     sterilized = models.BooleanField("已绝育", default=False)
     temperament = models.CharField("性格", max_length=20, choices=Temperament, default=Temperament.GENTLE)
     health_status = models.CharField("健康情况", max_length=200, default="健康")
-    diet_notes = models.CharField("饮食习惯", max_length=200, blank=True, help_text="如：每日两餐，每餐 150g 狗粮")
-    allergies = models.CharField("过敏/禁忌", max_length=200, blank=True)
-    vaccine_expiry = models.DateField("疫苗有效期至", null=True, blank=True)
+    diet_notes = models.CharField(
+        "饮食习惯",
+        max_length=300,
+        blank=True,
+        help_text="可选。如：每日两餐每餐 150g 狗粮；对鸡肉过敏",
+    )
     deworm_expiry = models.DateField("驱虫有效期至", null=True, blank=True)
     owner = models.ForeignKey(Owner, verbose_name="主人", on_delete=models.PROTECT, related_name="pets")
     created_at = models.DateTimeField("建档时间", auto_now_add=True)
@@ -101,9 +105,6 @@ class Pet(models.Model):
     @property
     def size(self) -> PetSize:
         return PetSize.from_weight(self.weight)
-
-    def vaccine_valid_through(self, day: date) -> bool:
-        return self.vaccine_expiry is not None and self.vaccine_expiry >= day
 
     def deworm_valid_through(self, day: date) -> bool:
         return self.deworm_expiry is not None and self.deworm_expiry >= day

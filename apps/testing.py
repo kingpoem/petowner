@@ -38,7 +38,6 @@ def make_pet(owner: Owner | None = None, **fields) -> Pet:
         "species": Species.DOG,
         "breed": "柯基",
         "weight": Decimal("8"),
-        "vaccine_expiry": days(365),
     }
     return Pet.objects.create(owner=owner or make_owner(), **{**defaults, **fields})
 

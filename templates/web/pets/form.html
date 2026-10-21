@@ -29,13 +29,11 @@
     </div>
     <h6 class="text-primary mb-3 mt-2">健康与习惯</h6>
     <div class="row">
-      <div class="col-md-6">{% include "web/_field.html" with field=form.vaccine_expiry %}</div>
       <div class="col-md-6">{% include "web/_field.html" with field=form.deworm_expiry %}</div>
-      <div class="col-md-12">{% include "web/_field.html" with field=form.health_status %}</div>
-      <div class="col-md-6">{% include "web/_field.html" with field=form.diet_notes %}</div>
-      <div class="col-md-6">{% include "web/_field.html" with field=form.allergies %}</div>
+      <div class="col-md-6">{% include "web/_field.html" with field=form.health_status %}</div>
+      <div class="col-12">{% include "web/_field.html" with field=form.diet_notes %}</div>
     </div>
-    <div class="alert alert-light small border"><i class="bi bi-info-circle me-1"></i>疫苗有效期需覆盖整个寄养期间才能预约；体重与性格用于自动匹配合适的房间。</div>
+    <div class="alert alert-light small border"><i class="bi bi-info-circle me-1"></i>体重与性格用于自动匹配合适的房间；饮食习惯（含过敏禁忌）会同步给护理师。</div>
     <div class="d-flex gap-2">
       <button class="btn btn-primary">保存档案</button>
       <a class="btn btn-light" href="{% url 'web:pet_list' %}">取消</a>

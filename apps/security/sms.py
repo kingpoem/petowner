@@ -93,7 +93,7 @@ def send(phone: str, code: str):
 
 
 def send_notice(phone: str, content: str):
-    """业务触达短信（护理动态、健康异常、候补有房）。模板变量为 ${content}。"""
+    """业务触达短信（护理动态、健康异常）。模板变量为 ${content}。"""
     text = (content or "")[:60]
     backend = settings.SMS_BACKEND
     template = settings.SMS_NOTIFY_TEMPLATE_CODE or settings.SMS_TEMPLATE_CODE

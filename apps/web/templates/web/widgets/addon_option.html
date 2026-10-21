@@ -1,0 +1,14 @@
+<label class="addon-option"{% if widget.attrs.id %} for="{{ widget.attrs.id }}"{% endif %}{% if widget.service %} data-species="{{ widget.service.species }}"{% if widget.service.summary %} title="{{ widget.service.summary }}"{% endif %}{% endif %}>
+  <input type="checkbox" name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+  {% if widget.service %}
+    <span class="addon-option-body">
+      <span class="addon-option-title">{{ widget.service.name }}</span>
+    </span>
+    <span class="addon-option-price">
+      <strong>¥{{ widget.service.price }}</strong>
+      <small>/{% if widget.service.billing == "night" %}晚{% else %}次{% endif %}</small>
+    </span>
+  {% else %}
+    <span class="addon-option-body"><span class="addon-option-title">{{ widget.label }}</span></span>
+  {% endif %}
+</label>

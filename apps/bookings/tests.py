@@ -9,7 +9,6 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.notifications.models import Notification
 from apps.pets.models import Pet, PetSize
 from apps.rooms.models import Room
 from apps.testing import days, make_order, make_owner, make_pet, make_room
@@ -38,16 +37,6 @@ class RoomMatchingTests(TestCase):
         pet = make_pet(temperament=Pet.Temperament.AGGRESSIVE)
         self.assertIsNotNone(room_problem_for_pet(make_room(capacity=2), pet, days(3)))
         self.assertIsNone(room_problem_for_pet(make_room(capacity=1), pet, days(3)))
-
-    @override_settings(REQUIRE_VACCINE=True)
-    def test_vaccine_must_cover_whole_stay(self):
-        pet = make_pet(vaccine_expiry=days(2))
-        self.assertEqual(room_problem_for_pet(make_room(), pet, days(3))[0], "pet")
-        self.assertIsNone(room_problem_for_pet(make_room(), pet, days(2)))
-
-    @override_settings(REQUIRE_VACCINE=False)
-    def test_vaccine_check_can_be_disabled(self):
-        self.assertIsNone(room_problem_for_pet(make_room(), make_pet(vaccine_expiry=None), days(3)))
 
     def test_maintenance_room_rejected(self):
         room = make_room(status=Room.Status.MAINTENANCE)
@@ -149,14 +138,13 @@ class OrderLifecycleTests(TestCase):
         self.owner = make_owner()
         self.order = make_order(pet=make_pet(owner=self.owner), start=0, nights=3)
 
-    def test_pay_records_payment_and_notifies(self):
+    def test_pay_records_payment(self):
         payment = self.order.pay(Payment.Method.ALIPAY)
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, Order.PaymentStatus.PAID)
         self.assertIsNotNone(self.order.paid_at)
         self.assertEqual(payment.amount, self.order.amount)
         self.assertTrue(payment.transaction_no.startswith("T"))
-        self.assertTrue(Notification.objects.filter(user=self.owner.user, title="支付成功").exists())
         with self.assertRaises(ValidationError):
             self.order.pay(Payment.Method.ALIPAY)
 
@@ -214,7 +202,6 @@ class MoneyRuleTests(TestCase):
         self.assertEqual(order.payment_status, Order.PaymentStatus.PAID)
         refund = order.payments.get(kind=Payment.Kind.REFUND)
         self.assertEqual((refund.amount, refund.method), (Decimal("200.00"), Payment.Method.ALIPAY))
-        self.assertIn("扣除首晚房费", Notification.objects.get(title="预约已取消").body)
 
     def test_store_can_waive_cancel_fee(self):
         order = make_order(start=0, nights=2)
@@ -246,7 +233,6 @@ class MoneyRuleTests(TestCase):
         self.assertEqual(order.amount, Decimal("100.00"))
         self.assertEqual(order.payments.get(kind=Payment.Kind.REFUND).amount, Decimal("200.00"))
         self.assertEqual(order.payment_status, Order.PaymentStatus.PAID)
-        self.assertIn("¥200.00 已原路退回", Notification.objects.get(title="寄养已完成").body)
 
     @override_settings(EARLY_CHECKOUT_REFUND=False)
     def test_early_checkout_refund_can_be_disabled(self):
@@ -269,7 +255,6 @@ class MoneyRuleTests(TestCase):
         payment = order.pay(Payment.Method.ALIPAY)
         self.assertEqual(payment.amount, Decimal("100.00"))
         self.assertEqual(order.payment_status, Order.PaymentStatus.PAID)
-        self.assertTrue(Notification.objects.filter(title="补款成功").exists())
 
     def test_reschedule_cheaper_room_refunds_difference(self):
         order = make_order(start=2, nights=2)

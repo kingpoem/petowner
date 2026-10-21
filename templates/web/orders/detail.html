@@ -76,7 +76,6 @@
         {% for line in order.addons.all %}
           <dt class="col-4 text-muted fw-normal">{{ line.service.name }}</dt><dd class="col-8">¥{{ line.line_total }}</dd>
         {% endfor %}
-        {% if order.discount %}<dt class="col-4 text-muted fw-normal">优惠</dt><dd class="col-8 text-success">-¥{{ order.discount }}</dd>{% endif %}
         {% if order.status == 'cancelled' %}
           {% if order.cancel_fee %}<dt class="col-4 text-muted fw-normal">违约金</dt><dd class="col-8 fw-bold">¥{{ order.cancel_fee }}</dd>{% endif %}
         {% else %}

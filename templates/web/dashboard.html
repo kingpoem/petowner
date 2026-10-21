@@ -1,5 +1,5 @@
 {% extends "web/me_base.html" %}
-{% load static web_tags %}
+{% load web_tags %}
 
 {% block title %}个人中心{% endblock %}
 
@@ -13,27 +13,6 @@
     <a class="btn btn-primary" href="{% url 'web:booking_create' %}"><i class="bi bi-plus-lg me-1"></i>新建预约</a>
   </div>
 </div>
-
-{% for pet in vaccine_warnings %}
-  <div class="alert alert-warning d-flex align-items-center gap-2">
-    <i class="bi bi-exclamation-triangle-fill"></i>
-    <div class="flex-grow-1">{{ pet.name }} 的疫苗{% if pet.vaccine_expiry %}将于 {{ pet.vaccine_expiry|date:"Y-m-d" }} 到期{% else %}尚未登记{% endif %}，到期后将无法预约寄养。</div>
-    <a class="btn btn-sm btn-warning" href="{% url 'web:pet_edit' pet.pk %}">去更新</a>
-  </div>
-{% endfor %}
-
-{% if membership %}
-<div class="loyalty-hero mb-4">
-  <img class="loyalty-hero-img" src="{% static 'img/stock/member-pet.jpg' %}" alt="">
-  <div>
-    <div class="eyebrow">会员</div>
-    <div class="fw-bold fs-5">{{ membership.tier_name }} · {{ membership.points }} 积分</div>
-    <div class="small opacity-75 mb-2">房费 {{ membership.discount_label }} · 累计 {{ membership.lifetime_points }}</div>
-    <div class="loyalty-progress mb-2"><span style="width: {{ membership.progress_percent }}%"></span></div>
-    <a class="small text-white" href="{% url 'hospitality:membership' %}">打开会员中心</a>
-  </div>
-</div>
-{% endif %}
 
 <div class="ps-card p-4 mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -74,26 +53,7 @@
       {% endfor %}
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="ps-card p-4 h-100">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">最新消息</h5>
-        <a class="small" href="{% url 'web:notifications' %}">全部</a>
-      </div>
-      {% for note in notifications %}
-        <a class="d-block mb-3 text-decoration-none text-body" href="{% url 'web:notification_open' note.pk %}">
-          <div class="fw-semibold small"><span class="badge text-bg-{{ note.level }} me-1">&nbsp;</span>{{ note.title }}</div>
-          <div class="small text-muted text-truncate">{{ note.body }}</div>
-        </a>
-      {% empty %}
-        <p class="text-muted small">没有未读消息</p>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-
-{% if to_review %}
-<div class="row g-4 mt-0">
+  {% if to_review %}
   <div class="col-md-6">
     <div class="ps-card p-4 h-100">
       <h5 class="mb-3">待评价</h5>
@@ -105,6 +65,6 @@
       {% endfor %}
     </div>
   </div>
+  {% endif %}
 </div>
-{% endif %}
 {% endblock %}

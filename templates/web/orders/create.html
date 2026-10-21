@@ -6,15 +6,21 @@
 <div class="container">
   <div class="page-header">
     <h1>在线预约</h1>
-    <p class="text-muted mb-0">选择宠物、房间与日期，系统将实时校验空房、疫苗与房间适配</p>
+    <p class="text-muted mb-0">选择宠物、房间与日期，系统将实时校验空房与房间适配</p>
   </div>
   <form method="post" class="row g-4" novalidate data-quote-url="{% url 'web:quote_preview' %}" data-quote-target="#quoteBox">
     {% csrf_token %}
     <div class="col-lg-7">
       <div class="ps-card p-4">
         {% if form.non_field_errors %}<div class="alert alert-danger small">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
-        {% include "web/_field.html" with field=form.pet %}
-        <div class="small text-end mb-3" style="margin-top:-.5rem;"><a href="{% url 'web:pet_create' %}?next={{ request.get_full_path|urlencode }}">+ 添加新宠物</a></div>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-baseline gap-2 mb-1">
+            <label class="form-label fw-semibold small mb-0" for="{{ form.pet.id_for_label }}">{{ form.pet.label }}{% if form.pet.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+            <a class="small" href="{% url 'web:pet_create' %}?next={{ request.get_full_path|urlencode }}">+ 添加新宠物</a>
+          </div>
+          {{ form.pet }}
+          {% for error in form.pet.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
         {% include "web/_field.html" with field=form.room %}
         <div class="row">
           <div class="col-6">{% include "web/_field.html" with field=form.check_in %}</div>
@@ -22,12 +28,6 @@
         </div>
         {% include "web/_field.html" with field=form.note %}
         {% include "web/_field.html" with field=form.addons %}
-        <div class="row">
-          <div class="col-md-6">{% include "web/_field.html" with field=form.coupon_code %}</div>
-          <div class="col-md-6">{% include "web/_field.html" with field=form.redeem_points %}</div>
-        </div>
-        {% include "web/_field.html" with field=form.use_member %}
-        <p class="small text-muted mb-0"><i class="bi bi-calculator me-1"></i>修改房间、日期、增值服务或优惠后，右侧费用会自动试算</p>
       </div>
     </div>
     <div class="col-lg-5">

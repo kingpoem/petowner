@@ -26,28 +26,6 @@
     <div class="col-12"><div class="empty-state"><i class="bi bi-stars"></i><p class="mt-2">服务目录即将上线</p></div></div>
     {% endfor %}
   </div>
-
-  {% if coupons %}
-  <div class="section-title mt-5">
-    <div class="eyebrow">Coupons</div>
-    <h2>现在可用的优惠</h2>
-  </div>
-  <div class="row g-3">
-    {% for coupon in coupons %}
-    <div class="col-md-6 col-lg-4">
-      <div class="coupon-tile h-100">
-        <div class="coupon-value">
-          {% if coupon.kind == 'percent' %}{{ coupon.value|floatformat:"-2" }}%{% else %}¥{{ coupon.value|floatformat:"-2" }}{% endif %}
-        </div>
-        <div>
-          <div class="fw-semibold">{{ coupon.name }}</div>
-          <div class="small text-muted">码 {{ coupon.code }}{% if coupon.min_spend %} · 满 ¥{{ coupon.min_spend|floatformat:"-2" }}{% endif %}</div>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
   <div class="text-center mt-5 mb-2">
     <a class="btn btn-primary btn-lg" href="{% url 'web:booking_create' %}">去预约并加购</a>
   </div>

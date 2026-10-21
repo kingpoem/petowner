@@ -1,6 +1,5 @@
-:root,
-html[data-theme="light"],
-html[data-theme="dark"] {
+:root {
+  color-scheme: light;
   --primary: #f2703f;
   --secondary: #d85a2b;
   --accent: #fff1ea;
@@ -15,10 +14,6 @@ html[data-theme="dark"] {
   --default-button-hover-bg: #b94a20;
   --object-tools-bg: #6b7280;
   --object-tools-hover-bg: #1f2a44;
-}
-
-:root,
-html[data-theme="light"] {
   --link-fg: #c2541f;
   --link-hover-color: #8a3510;
   --link-selected-fg: #d85a2b;
@@ -43,10 +38,6 @@ html[data-theme="light"] {
 .login #site-name {
   font-size: 1.125rem;
   white-space: nowrap;
-}
-
-#header .theme-toggle {
-  background: transparent;
 }
 
 /* ---------- 运营看板与经营报表 ---------- */

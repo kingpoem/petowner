@@ -26,7 +26,7 @@ def thumbnail(file, size=48):
 class PetInline(admin.TabularInline):
     model = Pet
     extra = 0
-    fields = ("code", "name", "species", "breed", "age", "weight", "vaccine_expiry")
+    fields = ("code", "name", "species", "breed", "age", "weight", "deworm_expiry")
     readonly_fields = ("code",)
     show_change_link = True
 
@@ -49,6 +49,7 @@ class OwnerAdmin(admin.ModelAdmin):
     list_display = ("name", "phone", "email", "pet_count", "has_account", "created_at")
     search_fields = ("name", "phone")
     readonly_fields = ("user", "created_at")
+    fields = ("user", "name", "phone", "email", "address", "emergency_contact", "emergency_phone", "created_at")
     inlines = [PetInline]
     actions = ("create_account",)
 
@@ -90,7 +91,7 @@ class PetAdmin(admin.ModelAdmin):
         "age",
         "weight",
         "temperament",
-        "vaccine_expiry",
+        "deworm_expiry",
         "owner_name",
         "owner_phone",
     )
@@ -107,7 +108,7 @@ class PetAdmin(admin.ModelAdmin):
             {"fields": ("code", "owner", "name", "photo", "photo_preview", "species", "breed", "gender", "age")},
         ),
         ("体型与性格", {"fields": ("weight", "sterilized", "temperament")}),
-        ("健康", {"fields": ("health_status", "vaccine_expiry", "deworm_expiry", "diet_notes", "allergies")}),
+        ("健康", {"fields": ("health_status", "deworm_expiry", "diet_notes")}),
         (None, {"fields": ("created_at",)}),
     )
 

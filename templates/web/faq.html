@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}常见问题{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <p class="eyebrow">FAQ</p>
+    <h1>常见问题</h1>
+  </div>
+
+  <div class="wrap-md">
+    <div class="accordion faq" id="faqList">
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#q1">入住需要准备什么？</button></h2>
+        <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqList"><div class="accordion-body text-muted">请携带宠物日常口粮（可减少换粮应激）以及熟悉的小毯子或玩具。如有长期用药，可在「健康护照」中提前登记，入住时会生成护理任务。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2">可以取消或修改预约吗？</button></h2>
+        <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">入住前可在订单页随时取消，已支付金额原路全额退回。如需更换日期，请取消后重新预约，或致电 {{ SITE.phone }} 由门店协助调整。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">房间满了怎么办？</button></h2>
+        <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">当前日期段若已满房，可换其他房间类型或调整入住离店日期后再查询。也可致电 {{ SITE.phone }} 由门店协助安排。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4">价格怎么计算？</button></h2>
+        <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">按晚计价，离店当天不计费；节假日可能按日历房价加价。下单前可看到逐晚价格明细。</div></div>
+      </div>
+      <div class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q5">宠物在寄养期间生病了怎么办？</button></h2>
+        <div id="q5" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">护理师每天观察精神、食欲和排便情况。一旦记录为异常，系统会立即向您发送提醒，门店也会电话联系您，并在征得同意后送往合作宠物医院。</div></div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5 mb-2">
+      <a class="btn btn-primary btn-lg" href="{% url 'web:room_list' %}">查看可订房间</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+<div{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %} class="addon-picker">
+  {% for group, options, index in widget.optgroups %}
+    {% for option in options %}
+      {% include option.template_name with widget=option %}
+    {% endfor %}
+  {% empty %}
+    <p class="small text-muted mb-0">暂无可选加购服务</p>
+  {% endfor %}
+</div>

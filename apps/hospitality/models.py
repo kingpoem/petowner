@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.bookings.models import Order
-from apps.pets.models import Owner, Pet, Species
+from apps.pets.models import Pet, Species
 
 
 class Billing(models.TextChoices):
@@ -56,165 +56,6 @@ class OrderAddon(models.Model):
 
     def __str__(self):
         return f"{self.order} · {self.service.name}"
-
-
-class Coupon(models.Model):
-    class Kind(models.TextChoices):
-        PERCENT = "percent", "折扣（%）"
-        AMOUNT = "amount", "立减（元）"
-
-    code = models.CharField("优惠码", max_length=32, unique=True)
-    name = models.CharField("名称", max_length=40)
-    kind = models.CharField("类型", max_length=10, choices=Kind, default=Kind.AMOUNT)
-    value = models.DecimalField("力度", max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))])
-    min_spend = models.DecimalField("最低消费（元）", max_digits=10, decimal_places=2, default=0)
-    starts_on = models.DateField("开始日期", null=True, blank=True)
-    ends_on = models.DateField("结束日期", null=True, blank=True)
-    usage_limit = models.PositiveIntegerField("发放上限", default=0, help_text="0 表示不限次数")
-    used_count = models.PositiveIntegerField("已使用", default=0)
-    is_active = models.BooleanField("启用", default=True)
-
-    class Meta:
-        verbose_name = "优惠券"
-        verbose_name_plural = verbose_name
-        ordering = ["-is_active", "code"]
-
-    def __str__(self):
-        return f"{self.code} {self.name}"
-
-    def usable_on(self, day, spend: Decimal) -> str:
-        """返回不可用原因；可用时返回空字符串。"""
-        if not self.is_active:
-            return "优惠码已停用"
-        if self.starts_on and day < self.starts_on:
-            return "优惠码尚未生效"
-        if self.ends_on and day > self.ends_on:
-            return "优惠码已过期"
-        if self.usage_limit and self.used_count >= self.usage_limit:
-            return "优惠码已领完"
-        if spend < self.min_spend:
-            return f"满 ¥{self.min_spend} 可用"
-        return ""
-
-    def discount_for(self, spend: Decimal) -> Decimal:
-        if self.kind == self.Kind.PERCENT:
-            rate = min(self.value, Decimal("100")) / Decimal("100")
-            return (spend * rate).quantize(Decimal("0.01"))
-        return min(self.value, spend)
-
-
-class MemberAccount(models.Model):
-    TIERS = (
-        (8000, "黑金", Decimal("0.92")),
-        (2000, "金卡", Decimal("0.95")),
-        (500, "银卡", Decimal("0.98")),
-        (0, "萌新", Decimal("1")),
-    )
-
-    owner = models.OneToOneField(Owner, verbose_name="主人", on_delete=models.CASCADE, related_name="membership")
-    points = models.PositiveIntegerField("可用积分", default=0)
-    lifetime_points = models.PositiveIntegerField("累计积分", default=0)
-    created_at = models.DateTimeField("入会时间", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "会员账户"
-        verbose_name_plural = verbose_name
-
-    def __str__(self):
-        return f"{self.owner.name} · {self.tier_name} · {self.points} 积分"
-
-    @property
-    def tier_name(self) -> str:
-        for threshold, name, _rate in self.TIERS:
-            if self.lifetime_points >= threshold:
-                return name
-        return "萌新"
-
-    @property
-    def rate(self) -> Decimal:
-        for threshold, _name, rate in self.TIERS:
-            if self.lifetime_points >= threshold:
-                return rate
-        return Decimal("1")
-
-    @property
-    def next_tier(self) -> tuple[str, int] | None:
-        higher = [item for item in self.TIERS if item[0] > self.lifetime_points]
-        if not higher:
-            return None
-        threshold, name, _rate = higher[-1]
-        return name, threshold
-
-    @property
-    def progress_percent(self) -> int:
-        nxt = self.next_tier
-        if nxt is None:
-            return 100
-        return min(100, int(self.lifetime_points * 100 / nxt[1])) if nxt[1] else 100
-
-    @property
-    def points_to_next(self) -> int:
-        nxt = self.next_tier
-        if nxt is None:
-            return 0
-        return max(nxt[1] - self.lifetime_points, 0)
-
-    @property
-    def discount_label(self) -> str:
-        if self.rate >= 1:
-            return "无折扣"
-        text = format(self.rate * 10, "f").rstrip("0").rstrip(".")
-        return f"{text} 折"
-
-
-class PointLedger(models.Model):
-    account = models.ForeignKey(MemberAccount, verbose_name="会员", on_delete=models.CASCADE, related_name="entries")
-    order = models.ForeignKey(
-        Order, verbose_name="订单", on_delete=models.SET_NULL, null=True, blank=True, related_name="point_entries"
-    )
-    delta = models.IntegerField("变动")
-    reason = models.CharField("原因", max_length=20)
-    created_at = models.DateTimeField("时间", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "积分流水"
-        verbose_name_plural = verbose_name
-        ordering = ["-created_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["account", "order", "reason"],
-                name="uniq_point_entry_per_order_reason",
-            )
-        ]
-
-    def __str__(self):
-        sign = "+" if self.delta > 0 else ""
-        return f"{sign}{self.delta} {self.reason}"
-
-
-class VaccineRecord(models.Model):
-    pet = models.ForeignKey(Pet, verbose_name="宠物", on_delete=models.CASCADE, related_name="vaccines")
-    name = models.CharField("疫苗名称", max_length=40)
-    batch = models.CharField("批号", max_length=40, blank=True)
-    clinic = models.CharField("接种机构", max_length=80, blank=True)
-    injected_on = models.DateField("接种日期")
-    expires_on = models.DateField("有效期至")
-    note = models.CharField("备注", max_length=120, blank=True)
-
-    class Meta:
-        verbose_name = "疫苗记录"
-        verbose_name_plural = verbose_name
-        ordering = ["-expires_on"]
-
-    def __str__(self):
-        return f"{self.pet.name} {self.name}"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        latest = self.pet.vaccines.order_by("-expires_on").values_list("expires_on", flat=True).first()
-        if latest and self.pet.vaccine_expiry != latest:
-            self.pet.vaccine_expiry = latest
-            self.pet.save(update_fields=["vaccine_expiry"])
 
 
 class Medication(models.Model):
@@ -333,36 +174,6 @@ class SupplyMovement(models.Model):
             self.supply.save(update_fields=["stock"])
 
 
-class WaitlistEntry(models.Model):
-    class Status(models.TextChoices):
-        WAITING = "waiting", "排队中"
-        OFFERED = "offered", "已通知"
-        BOOKED = "booked", "已转预约"
-        CANCELLED = "cancelled", "已取消"
-
-    owner = models.ForeignKey(Owner, verbose_name="主人", on_delete=models.CASCADE, related_name="waitlist")
-    pet = models.ForeignKey(Pet, verbose_name="宠物", on_delete=models.CASCADE, related_name="waitlist")
-    room_type = models.CharField(
-        "期望房型",
-        max_length=20,
-        blank=True,
-        choices=[("", "不限房型"), ("standard", "标准间"), ("deluxe", "豪华间"), ("suite", "套间")],
-    )
-    check_in = models.DateField("期望入住")
-    check_out = models.DateField("期望离店")
-    note = models.CharField("备注", max_length=200, blank=True)
-    status = models.CharField("状态", max_length=12, choices=Status, default=Status.WAITING)
-    created_at = models.DateTimeField("提交时间", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "满房候补"
-        verbose_name_plural = verbose_name
-        ordering = ["check_in", "created_at"]
-
-    def __str__(self):
-        return f"{self.pet.name} {self.check_in} 候补"
-
-
 class HolidayRate(models.Model):
     day = models.DateField("日期", unique=True)
     label = models.CharField("名称", max_length=20, default="旺季")
@@ -403,11 +214,6 @@ class StoreNotice(models.Model):
     @classmethod
     def published(cls):
         return cls.objects.filter(is_published=True)
-
-
-def ensure_member(owner: Owner) -> MemberAccount:
-    account, _created = MemberAccount.objects.get_or_create(owner=owner)
-    return account
 
 
 def local_today():

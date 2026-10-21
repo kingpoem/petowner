@@ -4,13 +4,10 @@
 
 {% block content %}
 <article class="receipt-sheet">
-  <div class="d-flex justify-content-between align-items-start gap-3">
-    <div>
-      <div class="eyebrow">{{ SITE.name }}</div>
-      <h1 class="mb-1">寄养收据</h1>
-      <div class="text-muted small">{{ SITE.address }} · {{ SITE.phone }}</div>
-    </div>
-    <button class="btn btn-primary no-print" onclick="window.print()">打印</button>
+  <div>
+    <div class="eyebrow">{{ SITE.name }}</div>
+    <h1 class="mb-1">寄养收据</h1>
+    <div class="text-muted small">{{ SITE.address }} · {{ SITE.phone }}</div>
   </div>
   <div class="receipt-meta">
     <div>单号 {{ order.order_no }}<br>状态 {{ order.get_status_display }} · {{ order.get_payment_status_display }}</div>
@@ -24,27 +21,12 @@
         <td>¥{{ night.price }}</td>
       </tr>
       {% endfor %}
-      {% if stay_quote.discount %}
-      <tr>
-        <td>{{ stay_quote.discount_label }}</td>
-        <td>-¥{{ stay_quote.discount }}</td>
-      </tr>
-      {% endif %}
       {% for line in addons %}
       <tr>
         <td>{{ line.service.name }} × {{ line.quantity }}</td>
         <td>¥{{ line.line_total }}</td>
       </tr>
       {% endfor %}
-      {% if order.coupon_discount %}
-      <tr><td>优惠码 {{ order.coupon_code }}</td><td>-¥{{ order.coupon_discount }}</td></tr>
-      {% endif %}
-      {% if order.member_discount %}
-      <tr><td>会员折扣</td><td>-¥{{ order.member_discount }}</td></tr>
-      {% endif %}
-      {% if order.points_discount %}
-      <tr><td>积分抵扣 {{ order.points_redeemed }} 分</td><td>-¥{{ order.points_discount }}</td></tr>
-      {% endif %}
     </tbody>
   </table>
   <div class="d-flex justify-content-between align-items-end mt-3 pt-3 border-top">

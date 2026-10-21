@@ -71,9 +71,6 @@
                 <span>¥{{ night.price }}</span>
               </div>
             {% endfor %}
-            {% if quote.discount %}
-              <div class="d-flex justify-content-between py-1 text-success"><span>{{ quote.discount_label }}</span><span>-¥{{ quote.discount }}</span></div>
-            {% endif %}
             <div class="d-flex justify-content-between pt-2 mt-2 border-top fs-5 fw-bold"><span>合计 {{ quote.days }} 晚</span><span class="text-primary">¥{{ quote.total }}</span></div>
           </div>
           {% if available %}
@@ -84,7 +81,7 @@
         {% else %}
           <a class="btn btn-primary btn-lg w-100 mt-3" href="{% url 'web:booking_create' %}?room={{ room.pk }}">立即预约</a>
         {% endif %}
-        <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>入住前可免费取消；连住 {{ SITE.long_stay_days }} 晚及以上享 {{ SITE.long_stay_rate }} 折</p>
+        <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>入住前可免费取消</p>
       </div>
     </div>
   </div>

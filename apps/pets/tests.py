@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from apps.testing import days, make_owner, make_pet
+from apps.testing import make_owner, make_pet
 
 from .models import PetSize
 
@@ -20,12 +20,6 @@ class PetTests(TestCase):
         self.assertEqual(pet.code, f"P{pet.pk:05d}")
         pet.refresh_from_db()
         self.assertEqual(pet.code, f"P{pet.pk:05d}")
-
-    def test_vaccine_validity(self):
-        pet = make_pet(vaccine_expiry=days(10))
-        self.assertTrue(pet.vaccine_valid_through(days(10)))
-        self.assertFalse(pet.vaccine_valid_through(days(11)))
-        self.assertFalse(make_pet(vaccine_expiry=None).vaccine_valid_through(days(0)))
 
     def test_owner_without_account(self):
         owner = make_owner(with_account=False)

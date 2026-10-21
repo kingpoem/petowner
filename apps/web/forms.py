@@ -1,8 +1,8 @@
 import re
 
 from django import forms
-from django.contrib.auth import get_user_model, password_validation
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, SetPasswordForm
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review
 from apps.hospitality.models import AddonService
-from apps.hospitality.services import apply_stay, ensure_member, price_booking
+from apps.hospitality.services import apply_stay, price_booking
 from apps.pets.models import Owner, Pet, Species
 from apps.rooms.models import Room
 from apps.security.forms import LoginGuardMixin, SmsCodeField, SmsVerifyMixin
@@ -25,15 +25,38 @@ class BootstrapMixin:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             widget = field.widget
+            if isinstance(widget, (forms.CheckboxSelectMultiple, forms.RadioSelect)):
+                continue
             if isinstance(widget, forms.CheckboxInput):
                 css = "form-check-input"
-            elif isinstance(widget, forms.RadioSelect):
-                continue
             elif isinstance(widget, forms.Select):
                 css = "form-select"
             else:
                 css = "form-control"
             widget.attrs["class"] = f"{widget.attrs.get('class', '')} {css}".strip()
+
+
+class AddonCheckboxSelect(forms.CheckboxSelectMultiple):
+    """增值服务：卡片式多选，名称 + 单价。"""
+
+    template_name = "web/widgets/addon_select.html"
+    option_template_name = "web/widgets/addon_option.html"
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        option["service"] = getattr(value, "instance", None)
+        return option
+
+
+class PetSelect(forms.Select):
+    """宠物下拉：选项带物种，便于前端过滤不适用的增值服务。"""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        pet = getattr(value, "instance", None)
+        if pet is not None:
+            option["attrs"]["data-species"] = pet.species
+        return option
 
 
 def pet_label(pet: Pet) -> str:
@@ -48,15 +71,41 @@ def clean_phone(value: str) -> str:
 
 
 def validate_new_password(form, first: str, second: str, user=None) -> str:
+    """顾客端只校验两次输入一致，不限制密码强度与格式。"""
     p1, p2 = form.cleaned_data.get(first), form.cleaned_data.get(second)
     if p1 and p2 and p1 != p2:
         raise ValidationError("两次输入的密码不一致")
-    if p1:
-        try:
-            password_validation.validate_password(p1, user)
-        except ValidationError as exc:
-            form.add_error(first, exc)
     return p2
+
+
+class OwnerSetPasswordForm(BootstrapMixin, SetPasswordForm):
+    """邮件重置密码：不限制密码形式。"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["new_password1"].help_text = ""
+
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get("new_password1")
+        password2 = self.cleaned_data.get("new_password2")
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("两次输入的密码不一致", code="password_mismatch")
+        return password2
+
+
+class OwnerPasswordChangeForm(BootstrapMixin, PasswordChangeForm):
+    """登录后修改密码：不限制密码形式。"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["new_password1"].help_text = ""
+
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get("new_password1")
+        password2 = self.cleaned_data.get("new_password2")
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("两次输入的密码不一致", code="password_mismatch")
+        return password2
 
 
 class RegisterForm(SmsVerifyMixin, BootstrapMixin, forms.Form):
@@ -153,12 +202,9 @@ class PetForm(BootstrapMixin, forms.ModelForm):
             "temperament",
             "health_status",
             "diet_notes",
-            "allergies",
-            "vaccine_expiry",
             "deworm_expiry",
         ]
         widgets = {
-            "vaccine_expiry": DATE_INPUT,
             "deworm_expiry": DATE_INPUT,
             "photo": forms.FileInput(attrs={"accept": "image/*", "data-preview": "#photoPreview"}),
         }
@@ -183,20 +229,22 @@ class SearchForm(BootstrapMixin, DateRangeMixin, forms.Form):
 
 
 class BookingForm(BootstrapMixin, forms.ModelForm):
-    coupon_code = forms.CharField(label="优惠码", required=False, help_text="例如 WELCOME、LONGSTAY、PAW50")
-    redeem_points = forms.IntegerField(label="抵扣积分", required=False, min_value=0, help_text="100 积分 = ¥1")
-    use_member = forms.BooleanField(label="使用会员房费折扣", required=False)
     addons = forms.ModelMultipleChoiceField(
-        label="增值服务",
+        label="增值服务（选填）",
         queryset=AddonService.objects.none(),
         required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={"class": "addon-list"}),
+        widget=AddonCheckboxSelect,
     )
 
     class Meta:
         model = Order
         fields = ["pet", "room", "check_in", "check_out", "note"]
-        widgets = {"check_in": DATE_INPUT, "check_out": DATE_INPUT, "note": forms.TextInput}
+        widgets = {
+            "pet": PetSelect,
+            "check_in": DATE_INPUT,
+            "check_out": DATE_INPUT,
+            "note": forms.TextInput,
+        }
         labels = {"note": "给护理师的留言（选填）"}
 
     def __init__(self, *args, owner: Owner, **kwargs):
@@ -213,13 +261,9 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
         self.fields["room"].queryset = bookable_rooms()
         self.fields["room"].label_from_instance = room_label
         self.fields["room"].empty_label = "请选择房间"
+        # 全部在售项都渲染；前端按宠物种隐藏不适用项，避免切宠物后选项丢失
         self.fields["addons"].queryset = AddonService.objects.filter(is_active=True)
         self.fields["addons"].label_from_instance = addon_label
-        account = ensure_member(owner)
-        if account.rate < 1:
-            self.fields["use_member"].help_text = f"当前{account.tier_name}，房费可享 {account.discount_label}"
-        else:
-            self.fields["use_member"].help_text = "累计积分达到银卡后，预约时可勾选房费折扣"
 
     def clean(self):
         cleaned = super().clean()
@@ -230,9 +274,6 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
             check_in=cleaned["check_in"],
             check_out=cleaned["check_out"],
             addon_ids=[item.pk for item in cleaned.get("addons") or []],
-            coupon_code=cleaned.get("coupon_code") or "",
-            redeem_points=cleaned.get("redeem_points") or 0,
-            use_member=bool(cleaned.get("use_member")),
             owner=self.owner,
             pet=cleaned.get("pet"),
         )

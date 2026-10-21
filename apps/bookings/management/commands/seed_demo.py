@@ -13,7 +13,6 @@ from django.utils import timezone
 from apps.bookings.models import Order, Payment
 from apps.care.models import Review, ServiceRecord
 from apps.hospitality.seed import attach_demo_addon, seed_catalog, seed_story
-from apps.notifications.models import Notification
 from apps.pets.models import Owner, Pet, PetSize, Species
 from apps.rooms.models import Room
 from apps.stores.models import Store
@@ -117,7 +116,6 @@ def _at(day: date, hour: int, minute: int = 0) -> datetime:
 
 def _backdate(order: Order, lead_days: int = 7):
     """业务方法按“当前时间”打时间戳；演示订单需要挪到与入住日期吻合的时间点。"""
-    old_no, old_link = order.order_no, order.get_absolute_url()
     booked = _at(order.check_in - timedelta(days=lead_days), 20, 30)
     paid = booked + timedelta(minutes=4) if order.paid_at else None
     checked_in = None
@@ -136,14 +134,6 @@ def _backdate(order: Order, lead_days: int = 7):
     )
     order.refresh_from_db()
     order.payments.update(created_at=paid or booked)
-    stamps = {"支付成功": paid, "已办理入住": checked_in, "寄养已完成": checked_out}
-    care_times = {r.care_content[:80]: r.feeding_time for r in order.service_records.all()}
-    for note in Notification.objects.filter(link=old_link):
-        note.link = order.get_absolute_url()
-        note.body = note.body.replace(old_no, order.order_no)
-        note.created_at = stamps.get(note.title) or care_times.get(note.body) or note.created_at
-        note.is_read = order.status == Order.Status.COMPLETED
-        note.save()
     Review.objects.filter(order=order).update(created_at=_at(order.check_out + timedelta(days=1), 21))
 
 
@@ -178,7 +168,6 @@ class Command(BaseCommand):
             rooms[room.number] = room
 
         today = timezone.localdate()
-        vaccine = today + timedelta(days=300)
 
         def customer(name, phone, **extra):
             user = User.objects.create_user(username=phone, password=DEMO_PASSWORD, first_name=name)
@@ -196,7 +185,7 @@ class Command(BaseCommand):
 
         def pet(owner, slot, **fields):
             p = Pet.objects.create(
-                owner=owner, vaccine_expiry=vaccine, deworm_expiry=today + timedelta(days=60), **fields
+                owner=owner, deworm_expiry=today + timedelta(days=60), **fields
             )
             _attach(p, "photo", slot)
             return p
@@ -212,8 +201,7 @@ class Command(BaseCommand):
             weight=Decimal("22"),
             sterilized=True,
             temperament=Pet.Temperament.ACTIVE,
-            diet_notes="早晚各一餐，每餐 200g 狗粮",
-            allergies="对鸡肉过敏",
+            diet_notes="早晚各一餐，每餐 200g 狗粮；对鸡肉过敏",
         )
         mimi = pet(
             li,
@@ -403,13 +391,8 @@ class Command(BaseCommand):
                 "view_review",
                 "change_review",
                 "view_addonservice",
-                "view_coupon",
-                "view_waitlistentry",
-                "change_waitlistentry",
                 "view_caretask",
                 "change_caretask",
-                "view_vaccinerecord",
-                "add_vaccinerecord",
                 "view_supply",
                 "view_storenotice",
             )
@@ -427,7 +410,6 @@ class Command(BaseCommand):
                 "change_caretask",
                 "add_caretask",
                 "view_medication",
-                "view_vaccinerecord",
                 "add_supplymovement",
             )
         )

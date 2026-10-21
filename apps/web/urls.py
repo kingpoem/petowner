@@ -9,6 +9,8 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("rooms/", views.room_list, name="room_list"),
     path("rooms/<int:pk>/", views.room_detail, name="room_detail"),
+    path("care/", views.care, name="care"),
+    path("faq/", views.faq, name="faq"),
     path("pages/<slug:name>/", views.page, name="page"),
     path("account/register/", views.register, name="register"),
     path("account/login/", views.LoginView.as_view(), name="login"),
@@ -38,7 +40,4 @@ urlpatterns = [
     path("me/orders/<str:order_no>/review/", views.order_review, name="order_review"),
     path("book/", views.booking_create, name="booking_create"),
     path("book/quote/", views.quote_preview, name="quote_preview"),
-    path("me/notifications/", views.notification_list, name="notifications"),
-    path("me/notifications/<int:pk>/", views.notification_open, name="notification_open"),
-    path("me/notifications/read-all/", views.notification_read_all, name="notification_read_all"),
 ]

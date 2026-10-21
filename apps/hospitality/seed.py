@@ -10,14 +10,12 @@ from apps.pets.models import Pet
 from .models import (
     AddonService,
     Billing,
-    Coupon,
     HolidayRate,
     Medication,
     OrderAddon,
     StaffMember,
     StoreNotice,
     Supply,
-    VaccineRecord,
 )
 
 
@@ -55,23 +53,6 @@ def seed_catalog():
                 "sort": sort,
             },
         )
-    coupons = [
-        ("WELCOME", "新客立减", Coupon.Kind.AMOUNT, "30", "100", 0),
-        ("LONGSTAY", "连住加码 8%", Coupon.Kind.PERCENT, "8", "200", 0),
-        ("PAW50", "满 300 减 50", Coupon.Kind.AMOUNT, "50", "300", 200),
-    ]
-    for code, name, kind, value, minimum, limit in coupons:
-        Coupon.objects.update_or_create(
-            code=code,
-            defaults={
-                "name": name,
-                "kind": kind,
-                "value": Decimal(value),
-                "min_spend": Decimal(minimum),
-                "usage_limit": limit,
-                "is_active": True,
-            },
-        )
     for name, role, skills in (
         ("赵护理", StaffMember.Role.CARER, "犬只行为、喂药"),
         ("陈前台", StaffMember.Role.FRONT, "预约、收银、接送"),
@@ -93,9 +74,9 @@ def seed_catalog():
         defaults={"label": "店庆", "multiplier": Decimal("1.20"), "is_active": True},
     )
     StoreNotice.objects.update_or_create(
-        title="入住前请确认疫苗仍在有效期内",
+        title="入住请携带日常口粮与熟悉用品",
         defaults={
-            "body": "离店日当天疫苗仍需有效。可在「健康护照」里补登接种记录，系统会自动更新档案。",
+            "body": "自带口粮可减少换粮应激；小毯子或玩具有助于安抚。可在「健康护照」里登记寄养期间的用药计划。",
             "is_published": True,
             "pinned": True,
         },
@@ -106,16 +87,6 @@ def seed_story():
     pet = Pet.objects.filter(name="旺财").first()
     if pet is None:
         return
-    today = timezone.localdate()
-    if not pet.vaccines.exists():
-        VaccineRecord.objects.create(
-            pet=pet,
-            name="狂犬疫苗",
-            clinic="徐汇宠物医院",
-            injected_on=today - timedelta(days=40),
-            expires_on=today + timedelta(days=300),
-            batch="RB-2026-041",
-        )
     if not pet.medications.filter(drug="抗过敏片").exists():
         Medication.objects.create(
             pet=pet,
