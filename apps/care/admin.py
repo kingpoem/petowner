@@ -49,12 +49,14 @@ class ServiceRecordAdmin(admin.ModelAdmin):
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ("order", "rating", "content", "feedback", "has_reply", "is_public", "created_at")
+    list_display = ("order", "rating", "content", "has_reply", "is_public", "created_at")
     list_filter = ("rating", "is_public")
     show_facets = admin.ShowFacets.NEVER
     list_editable = ("is_public",)
-    search_fields = ("order__order_no", "content", "feedback")
+    search_fields = ("order__order_no", "content", "reply")
     autocomplete_fields = ("order",)
+    readonly_fields = ("order", "rating", "content", "created_at")
+    fields = ("order", "rating", "content", "reply", "is_public", "created_at")
 
     @admin.display(description="已回复", boolean=True)
     def has_reply(self, obj):

@@ -19,7 +19,6 @@
       {% for e in form.rating.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
     {% include "web/_field.html" with field=form.content %}
-    {% include "web/_field.html" with field=form.feedback %}
     {% include "web/_field.html" with field=form.is_public %}
     <button class="btn btn-primary">提交评价</button>
   </form>

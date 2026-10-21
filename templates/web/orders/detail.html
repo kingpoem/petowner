@@ -103,7 +103,7 @@
       <h6 class="mb-2">我的评价</h6>
       <div class="stars">{% for _ in order.review.rating|stars %}★{% endfor %}</div>
       <p class="small mb-0 mt-1">{{ order.review.content }}</p>
-      {% if order.review.reply %}<p class="small text-muted mt-2 mb-0 border-top pt-2">门店回复：{{ order.review.reply }}</p>{% endif %}
+      {% if order.review.reply %}<p class="small text-muted mt-2 mb-0 border-top pt-2">回复：{{ order.review.reply }}</p>{% endif %}
     </div>
     {% endif %}
   </div>

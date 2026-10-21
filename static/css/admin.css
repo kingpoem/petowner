@@ -707,6 +707,13 @@ body.dashboard #content-main {
   font-weight: 600;
 }
 
+/* ??? HTML hidden??????????????????? */
+#changelist .ps-actions-more[hidden],
+#changelist .ps-actions .ps-btn-delete[hidden],
+#changelist .ps-actions .ps-btn-more[hidden] {
+  display: none !important;
+}
+
 #changelist .ps-actions-more-label {
   color: #9ca3af;
   font-weight: 600;
@@ -994,6 +1001,34 @@ fieldset.module h2,
   text-align: left;
 }
 
+/* ?????????? summary ????? h2 ???? */
+fieldset.module.collapse > details > summary,
+fieldset.module.collapse summary {
+  display: block;
+  margin: 0;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: var(--secondary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+fieldset.module.collapse summary .fieldset-heading,
+fieldset.module.collapse summary h2 {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
+
 fieldset.module {
   border: 1px solid rgba(194, 84, 31, 0.12);
   border-radius: 12px;
@@ -1141,16 +1176,15 @@ body.change-form .inline-group .tabular td.field-line_total input {
   max-width: 6.5rem;
 }
 
-/* 寄养订单列表：操作提示 */
-#changelist .order-ops-hint {
-  margin: 0 0 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(194, 84, 31, 0.16);
-  background: #fff8f3;
-  color: #5c3317;
-  font-size: 13px;
-  line-height: 1.5;
+/* ????????????? */
+#changelist .order-ops-legend {
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 /* ---------- ????????????????????? ---------- */

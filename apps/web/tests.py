@@ -386,7 +386,7 @@ class OwnerAreaTests(TestCase):
         order.finish_boarding()
         self.client.post(
             reverse("web:order_review", args=[order.order_no]),
-            {"rating": 4, "content": "很好", "feedback": "", "is_public": "on"},
+            {"rating": 4, "content": "很好", "is_public": "on"},
         )
         self.assertEqual(order.review.rating, 4)
 

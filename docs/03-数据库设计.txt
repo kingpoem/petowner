@@ -27,7 +27,7 @@ PawStay 宠物寄养 —— 数据库设计（课程精简版）
 5. bookings_order：订单编号、宠物、房间、入离店、金额、支付状态、订单状态
 6. bookings_payment：收退款流水
 7. care_servicerecord：记录编号 code、订单、服务人员、喂养时间、护理内容、健康状态
-8. care_review：评分、评价内容、意见反馈、机构回复
+8. care_review：评分、评价内容、回复
 9. hospitality_addonservice / hospitality_orderaddon：增值服务目录与订单加购
 
 

@@ -82,7 +82,8 @@
           {% endif %}
         {% endblock %}
         <div>
-          {% block search %}{% search_form cl %}{% endblock %}
+          {# 列表页不显示搜索框；各 ModelAdmin 仍保留 search_fields 供 autocomplete #}
+          {% block search %}{% endblock %}
           {% block date_hierarchy %}{% endblock %}
 
           <form id="changelist-form" method="post"{% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %} novalidate>{% csrf_token %}

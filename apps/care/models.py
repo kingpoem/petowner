@@ -108,8 +108,7 @@ class Review(models.Model):
         "服务评分", validators=[MinValueValidator(1), MaxValueValidator(5)], help_text="1-5 分"
     )
     content = models.TextField("评价内容", blank=True)
-    feedback = models.TextField("意见反馈", blank=True)
-    reply = models.TextField("机构回复", blank=True)
+    reply = models.TextField("回复", blank=True)
     is_public = models.BooleanField("官网展示", default=True)
     created_at = models.DateTimeField("评价时间", auto_now_add=True)
 

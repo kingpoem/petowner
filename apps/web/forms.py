@@ -346,10 +346,9 @@ class ReviewForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = Review
-        fields = ["rating", "content", "feedback", "is_public"]
-        widgets = {"content": forms.Textarea(attrs={"rows": 4}), "feedback": forms.Textarea(attrs={"rows": 3})}
+        fields = ["rating", "content", "is_public"]
+        widgets = {"content": forms.Textarea(attrs={"rows": 4})}
         labels = {
-            "content": "说说这次寄养体验",
-            "feedback": "给我们的建议（仅门店可见）",
+            "content": "评价与建议",
             "is_public": "允许在官网展示我的评价",
         }

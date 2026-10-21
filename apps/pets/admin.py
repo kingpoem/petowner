@@ -1,7 +1,4 @@
-import secrets
-
-from django.contrib import admin, messages
-from django.contrib.auth import get_user_model
+from django.contrib import admin
 from django.utils.html import format_html
 
 from apps.bookings.models import Order
@@ -46,38 +43,15 @@ class OrderHistoryInline(admin.TabularInline):
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone", "pet_count", "has_account")
+    list_display = ("name", "phone", "pet_count")
     search_fields = ("name", "phone")
-    readonly_fields = ("user", "created_at")
-    fields = ("user", "name", "phone", "email", "address", "emergency_contact", "emergency_phone", "created_at")
+    readonly_fields = ("created_at",)
+    fields = ("name", "phone", "email", "address", "emergency_contact", "emergency_phone", "created_at")
     inlines = [PetInline]
-    actions = ("create_account",)
 
     @admin.display(description="宠物数量")
     def pet_count(self, obj):
         return obj.pets.count()
-
-    @admin.display(description="线上账号", boolean=True)
-    def has_account(self, obj):
-        return obj.user_id is not None
-
-    @admin.action(description="开通线上账号（生成初始密码）")
-    def create_account(self, request, queryset):
-        User = get_user_model()
-        for owner in queryset.filter(user__isnull=True):
-            if User.objects.filter(username=owner.phone).exists():
-                self.message_user(request, f"{owner.name}：手机号已被其他账号占用", messages.ERROR)
-                continue
-            password = secrets.token_urlsafe(6)
-            owner.user = User.objects.create_user(
-                username=owner.phone, password=password, email=owner.email, first_name=owner.name
-            )
-            owner.save(update_fields=["user"])
-            self.message_user(
-                request,
-                f"{owner.name}：账号 {owner.phone}，初始密码 {password}（请告知顾客登录后修改）",
-                messages.SUCCESS,
-            )
 
 
 @admin.register(Pet)
@@ -94,10 +68,9 @@ class PetAdmin(admin.ModelAdmin):
     )
     list_display_links = ("photo_thumb", "code", "name")
     list_filter = ("species", "temperament")
-    # 供订单等页的 autocomplete 使用；列表页搜索框在 change_list 模板中隐藏
+    # 供订单等页的 autocomplete 使用；列表页搜索框已在全局 change_list 中隐藏
     search_fields = ("code", "name", "breed", "owner__name", "owner__phone")
     show_facets = admin.ShowFacets.NEVER
-    change_list_template = "admin/pets/pet/change_list.html"
     autocomplete_fields = ("owner",)
     readonly_fields = ("code", "created_at", "photo_preview")
     list_select_related = ("owner",)

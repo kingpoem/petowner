@@ -1,11 +1,15 @@
 {% extends "admin/change_list.html" %}
+{% load admin_list %}
 
-{% block object-tools-items %}
-  <li><a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a></li>
-  {{ block.super }}
-{% endblock %}
-
-{% block result_list %}
-  <p class="help order-ops-hint">前台操作：勾选订单 → 按流程选择「收款 → 办理入住 → 办理离店」→ 点「执行」。可用上方「筛选」快速查看今日到店/离店。</p>
-  {{ block.super }}
+{% block pagination %}
+  <div class="changelist-footer">
+    {% pagination cl %}
+    {% if cl.formset and cl.result_count %}<input type="submit" name="_save" class="default" value="保存">{% endif %}
+    <p class="order-ops-legend">
+      收款：现金收款，含补差价。
+      办理离店：完成寄养。
+      取消预约：按取消政策退款。
+      可用上方筛选查看今日入住或离店。
+    </p>
+  </div>
 {% endblock %}

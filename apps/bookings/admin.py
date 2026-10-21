@@ -148,10 +148,11 @@ class OrderAdmin(admin.ModelAdmin):
     list_select_related = ("pet__owner", "room", "store")
     date_hierarchy = "check_in"
     inlines = [ServiceRecordInline, OrderAddonInline, PaymentInline]
-    # 顺序即前台流程：收款 → 入住 → 离店 → 取消
-    actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders", "cancel_orders_full_refund")
+    # 前台常用：收款 → 入住 → 离店 → 取消（说明见列表页底部）
+    actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders")
     actions_on_top = True
-    actions_on_bottom = True
+    actions_on_bottom = False
+    view_on_site = False
     change_list_template = "admin/bookings/order/change_list.html"
     exclude = ("store",)
 
@@ -249,7 +250,7 @@ class OrderAdmin(admin.ModelAdmin):
         for msg in failed:
             self.message_user(request, msg, messages.ERROR)
 
-    @admin.action(description="前台收款（现金，含补差价）")
+    @admin.action(description="收款")
     def mark_paid(self, request, queryset):
         self._run_transition(request, queryset, "mark_paid", "收款")
 
@@ -257,19 +258,13 @@ class OrderAdmin(admin.ModelAdmin):
     def start_boarding(self, request, queryset):
         self._run_transition(request, queryset, "start_boarding", "办理入住")
 
-    @admin.action(description="办理离店（完成寄养）")
+    @admin.action(description="办理离店")
     def finish_boarding(self, request, queryset):
         self._run_transition(request, queryset, "finish_boarding", "办理离店")
 
-    @admin.action(description="取消预约（按取消政策退款）")
+    @admin.action(description="取消预约")
     def cancel_orders(self, request, queryset):
         self._run_transition(request, queryset, "cancel", "取消预约", reason="门店操作取消")
-
-    @admin.action(description="取消预约并全额退款（门店原因）")
-    def cancel_orders_full_refund(self, request, queryset):
-        self._run_transition(
-            request, queryset, "cancel", "取消并全额退款", reason="门店原因取消，全额退款", waive_fee=True
-        )
 
     def get_urls(self):
         custom = [

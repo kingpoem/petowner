@@ -144,7 +144,7 @@
               <div class="text-muted">{{ review.order.room.display_name }} · {{ review.created_at|date:"Y-m-d" }}</div>
             </div>
           </div>
-          {% if review.reply %}<div class="small text-muted mt-3 border-top pt-2"><i class="bi bi-chat-heart text-primary me-1"></i>门店回复：{{ review.reply }}</div>{% endif %}
+          {% if review.reply %}<div class="small text-muted mt-3 border-top pt-2"><i class="bi bi-chat-heart text-primary me-1"></i>回复：{{ review.reply }}</div>{% endif %}
         </div>
       </div>
       {% endfor %}
