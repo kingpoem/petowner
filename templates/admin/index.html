@@ -1,37 +1,142 @@
 {% extends "admin/index.html" %}
-{% load admin_dashboard %}
+{% load static admin_dashboard %}
+
+{% block coltype %}colM{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
 
 {% block content %}
 {% dashboard_stats as s %}
 <div id="ps-dashboard">
-  <nav class="ps-shortcuts" aria-label="常用功能">
-    {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
-    {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_available_rooms' %}">可用房间查询</a>{% endif %}
-    {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_add' %}">门店录入订单</a>{% endif %}
-  </nav>
-  <div class="ps-dash">
-    <div class="ps-kpi"><div class="l">今日待入住</div><div class="v">{{ s.arrivals|length }}</div></div>
-    <div class="ps-kpi"><div class="l">今日待离店</div><div class="v">{{ s.departures|length }}</div></div>
-    <div class="ps-kpi"><div class="l">在住 / 总床位</div><div class="v">{{ s.boarding }} / {{ s.capacity }}</div></div>
-    <div class="ps-kpi"><div class="l">入住率</div><div class="v">{{ s.occupancy }}%</div></div>
-    <div class="ps-kpi"><div class="l">本月净收入（元）</div><div class="v">{{ s.month_revenue }}</div></div>
-    <div class="ps-kpi"><div class="l">待收款订单</div><div class="v">{{ s.unpaid }}</div></div>
-    <div class="ps-kpi"><div class="l">平均评分 / 待回复</div><div class="v">{{ s.avg_rating|floatformat:1|default:"-" }} / {{ s.pending_reviews }}</div></div>
-  </div>
-  <div class="ps-panels">
-    <div class="ps-panel">
-      <h3>今日入住</h3>
-      <ul>{% for o in s.arrivals %}<li><a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }} → {{ o.room.number }}</a>（{{ o.get_payment_status_display }}）</li>{% empty %}<li>暂无</li>{% endfor %}</ul>
+  <header class="ps-hero">
+    <div class="ps-hero-text">
+      <h1>运营看板</h1>
+      <p>今日入住、离店与房态一览</p>
     </div>
-    <div class="ps-panel">
-      <h3>今日（及逾期）离店</h3>
-      <ul>{% for o in s.departures %}<li><a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }} · {{ o.room.number }}</a>（应离店 {{ o.check_out|date:"m-d" }}）</li>{% empty %}<li>暂无</li>{% endfor %}</ul>
+    <nav class="ps-shortcuts" aria-label="常用功能">
+      {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
+      {% if perms.bookings.add_order %}<a href="{% url 'admin:bookings_order_available_rooms' %}">查空房</a>{% endif %}
+      {% if perms.bookings.add_order %}<a class="ps-btn-primary" href="{% url 'admin:bookings_order_add' %}">录入订单</a>{% endif %}
+    </nav>
+  </header>
+
+  <section class="ps-modules" aria-label="业务模块">
+    {% if perms.pets.view_pet or perms.pets.view_owner %}
+    <article class="ps-mod">
+      <img src="{% static 'img/stock/pet-golden.jpg' %}" alt="" loading="lazy">
+      <div class="ps-mod-body">
+        <h2>宠物及主人</h2>
+        <p>档案与联系方式</p>
+        <div class="ps-mod-links">
+          {% if perms.pets.view_pet %}<a href="{% url 'admin:pets_pet_changelist' %}">宠物档案</a>{% endif %}
+          {% if perms.pets.view_owner %}<a href="{% url 'admin:pets_owner_changelist' %}">主人信息</a>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endif %}
+
+    {% if perms.rooms.view_room %}
+    <article class="ps-mod">
+      <img src="{% static 'img/stock/room-dog-standard.jpg' %}" alt="" loading="lazy">
+      <div class="ps-mod-body">
+        <h2>寄养房间</h2>
+        <p>房价与房态</p>
+        <div class="ps-mod-links">
+          <a href="{% url 'admin:rooms_room_changelist' %}">房间列表</a>
+          {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endif %}
+
+    {% if perms.bookings.view_order %}
+    <article class="ps-mod">
+      <img src="{% static 'img/stock/ambient-suite.jpg' %}" alt="" loading="lazy">
+      <div class="ps-mod-body">
+        <h2>预约与订单</h2>
+        <p>入住与收款</p>
+        <div class="ps-mod-links">
+          <a href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>
+          {% if perms.bookings.view_payment %}<a href="{% url 'admin:bookings_payment_changelist' %}">收退款</a>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endif %}
+
+    {% if perms.care.view_servicerecord or perms.care.view_review %}
+    <article class="ps-mod">
+      <img src="{% static 'img/stock/service-feeding.jpg' %}" alt="" loading="lazy">
+      <div class="ps-mod-body">
+        <h2>服务与评价</h2>
+        <p>护理与回复</p>
+        <div class="ps-mod-links">
+          {% if perms.care.view_servicerecord %}<a href="{% url 'admin:care_servicerecord_changelist' %}">服务记录</a>{% endif %}
+          {% if perms.care.view_review %}<a href="{% url 'admin:care_review_changelist' %}">服务评价</a>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endif %}
+  </section>
+
+  <section class="ps-metrics" aria-label="关键指标">
+    <div class="ps-metric"><span>待入住</span><b>{{ s.arrivals|length }}</b></div>
+    <div class="ps-metric"><span>待离店</span><b>{{ s.departures|length }}</b></div>
+    <div class="ps-metric"><span>在住</span><b>{{ s.boarding }}<i>/{{ s.capacity }}</i></b></div>
+    <div class="ps-metric"><span>入住率</span><b>{{ s.occupancy }}%</b></div>
+    <div class="ps-metric"><span>本月收入</span><b>¥{{ s.month_revenue|floatformat:2 }}</b></div>
+    <div class="ps-metric"><span>待收款</span><b>{{ s.unpaid }}</b></div>
+    <div class="ps-metric"><span>评分 / 待回复</span><b>{{ s.avg_rating|floatformat:1|default:"-" }}<i> / {{ s.pending_reviews }}</i></b></div>
+  </section>
+
+  <section class="ps-workboard" aria-label="今日待办">
+    <article class="ps-work">
+      <h2>今日入住</h2>
+      <ul>
+        {% for o in s.arrivals %}
+        <li>
+          <a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }}</a>
+          <span>{{ o.room.number }} · {{ o.get_payment_status_display }}</span>
+        </li>
+        {% empty %}<li class="ps-empty">暂无</li>{% endfor %}
+      </ul>
+    </article>
+    <article class="ps-work">
+      <h2>今日离店</h2>
+      <ul>
+        {% for o in s.departures %}
+        <li>
+          <a href="{% url 'admin:bookings_order_change' o.pk %}">{{ o.pet.name }}</a>
+          <span>{{ o.room.number }} · {{ o.check_out|date:"m-d" }}</span>
+        </li>
+        {% empty %}<li class="ps-empty">暂无</li>{% endfor %}
+      </ul>
+    </article>
+    <article class="ps-work {% if s.alerts %}ps-work-alert{% endif %}">
+      <h2>健康异常</h2>
+      <ul>
+        {% for r in s.alerts %}
+        <li>
+          <a href="{% url 'admin:bookings_order_change' r.order_id %}">{{ r.order.pet.name }}</a>
+          <span>{{ r.health_note|default:r.care_content|truncatechars:28 }}</span>
+        </li>
+        {% empty %}<li class="ps-empty">近 3 天无异常</li>{% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  {% if app_list %}
+  <details class="ps-more">
+    <summary>更多功能</summary>
+    <div class="ps-more-links">
+      {% for app in app_list %}
+        {% if app.app_label != 'pets' and app.app_label != 'rooms' and app.app_label != 'bookings' and app.app_label != 'care' %}
+          {% for model in app.models %}
+            {% if model.admin_url %}<a href="{{ model.admin_url }}">{{ model.name }}</a>{% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
     </div>
-    <div class="ps-panel">
-      <h3 class="ps-alert">近 3 天健康异常</h3>
-      <ul>{% for r in s.alerts %}<li class="ps-alert"><a href="{% url 'admin:bookings_order_change' r.order_id %}">{{ r.order.pet.name }}</a>：{{ r.health_note|default:r.care_content|truncatechars:30 }}</li>{% empty %}<li>无异常记录</li>{% endfor %}</ul>
-    </div>
-  </div>
+  </details>
+  {% endif %}
 </div>
-{{ block.super }}
 {% endblock %}

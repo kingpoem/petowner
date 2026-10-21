@@ -133,6 +133,17 @@ class AdminLoginTests(TestCase):
         self.client.post(reverse("admin:login"), {"username": "boss", "password": PASSWORD, "captcha": "XXXX"})
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_customer_session_is_cleared_on_admin_login(self):
+        from apps.testing import make_owner
+
+        owner = make_owner(phone="17712339712")
+        self.client.force_login(owner.user)
+        response = self.client.get(reverse("admin:login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "没有这个页面的访问权限")
+        self.assertNotContains(response, "17712339712")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
 
 class SecurityHeaderTests(TestCase):
     def test_csp_and_permissions_policy(self):
