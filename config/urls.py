@@ -8,7 +8,7 @@ from config.admin_nav import patch_admin_nav
 
 admin.site.site_header = f"{settings.SITE_NAME} · 运营后台"
 admin.site.site_title = f"{settings.SITE_NAME} 运营后台"
-admin.site.index_title = "运营看板"
+admin.site.index_title = "寄养订单"
 admin.site.site_url = "/"
 admin.site.enable_nav_sidebar = False  # 只用顶栏导航，不显示左侧栏
 patch_admin_nav()

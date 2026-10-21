@@ -1,13 +1,6 @@
 from django.contrib import admin
 
-from .models import (
-    AddonService,
-    CareTask,
-    HolidayRate,
-    OrderAddon,
-    Supply,
-    SupplyMovement,
-)
+from .models import AddonService, OrderAddon
 
 
 class OrderAddonInline(admin.TabularInline):
@@ -20,45 +13,6 @@ class OrderAddonInline(admin.TabularInline):
 class AddonServiceAdmin(admin.ModelAdmin):
     list_display = ("name", "code", "price", "billing", "species", "is_active", "sort")
     list_filter = ("billing", "species", "is_active")
+    show_facets = admin.ShowFacets.NEVER
+    list_editable = ("is_active", "sort")
     search_fields = ("name", "code")
-
-
-@admin.register(CareTask)
-class CareTaskAdmin(admin.ModelAdmin):
-    """后勤任务：保留模型能力，不进日常导航。"""
-
-    list_display = ("title", "order", "due_date", "status")
-    list_filter = ("status", "due_date")
-    search_fields = ("title", "order__order_no", "order__pet__name")
-    autocomplete_fields = ("order",)
-
-    def has_module_permission(self, request):
-        return False
-
-
-class SupplyMovementInline(admin.TabularInline):
-    model = SupplyMovement
-    extra = 0
-    readonly_fields = ("created_at",)
-
-
-@admin.register(Supply)
-class SupplyAdmin(admin.ModelAdmin):
-    """物资库存：保留模型能力，不进日常导航。"""
-
-    list_display = ("name", "stock", "unit", "reorder_level", "low")
-    search_fields = ("name",)
-    inlines = [SupplyMovementInline]
-
-    def has_module_permission(self, request):
-        return False
-
-    @admin.display(boolean=True, description="需补货")
-    def low(self, obj: Supply):
-        return obj.low
-
-
-@admin.register(HolidayRate)
-class HolidayRateAdmin(admin.ModelAdmin):
-    list_display = ("day", "label", "multiplier", "is_active")
-    list_filter = ("is_active",)

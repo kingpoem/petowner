@@ -392,7 +392,7 @@ body.dashboard #content-main {
 
 .ps-workboard {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -1139,4 +1139,160 @@ body.change-form .inline-group .tabular td.field-line_total input {
   width: 5.5rem !important;
   min-width: 4.5rem;
   max-width: 6.5rem;
+}
+
+/* 寄养订单列表：操作提示 */
+#changelist .order-ops-hint {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(194, 84, 31, 0.16);
+  background: #fff8f3;
+  color: #5c3317;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---------- ????????????????????? ---------- */
+body.ps-tag-filter-page #changelist.filtered {
+  min-height: 0;
+}
+
+body.ps-tag-filter-page #changelist .changelist-form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+body.ps-tag-filter-page #changelist {
+  padding-top: 0;
+}
+
+body.ps-tag-filter-page #changelist .changelist-form-container:has(#changelist-filter) > div,
+body.ps-tag-filter-page #changelist .changelist-form-container > div {
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+body.ps-tag-filter-page #changelist-filter.ps-tag-filters,
+body.ps-tag-filter-page .ps-tag-filters {
+  flex: none;
+  order: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+body.ps-tag-filter-page .ps-tag-filters-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+body.ps-tag-filter-page .ps-tag-filters-actions a,
+body.ps-tag-filter-page .ps-tag-clear {
+  color: var(--link-fg);
+}
+
+body.ps-tag-filter-page .ps-tag-filters-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+body.ps-tag-filter-page .ps-tag-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px 14px;
+  min-height: 28px;
+  width: 100%;
+}
+
+body.ps-tag-filter-page .ps-tag-label {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  padding-top: 4px;
+  color: #1f2a44;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+  white-space: nowrap;
+}
+
+body.ps-tag-filter-page .ps-tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  align-items: center;
+  min-width: 0;
+}
+
+body.ps-tag-filter-page .ps-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  color: #4b5563 !important;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none !important;
+  border-left: 0 !important;
+  margin: 0 !important;
+  background: transparent;
+}
+
+body.ps-tag-filter-page .ps-tag:hover {
+  color: var(--primary) !important;
+  background: #fff4ed;
+}
+
+body.ps-tag-filter-page .ps-tag.is-active {
+  color: #fff !important;
+  background: var(--primary);
+  font-weight: 700;
+}
+
+body.ps-tag-filter-page .ps-tag.is-active:hover {
+  color: #fff !important;
+  background: var(--secondary);
+}
+
+/* ???????????????????????????????????? */
+body.ps-tag-filter-page .ps-tag-options:not(:has(.ps-tag.is-active)) > .ps-tag:first-child {
+  color: #fff !important;
+  background: var(--primary);
+  font-weight: 700;
+}
+
+body.ps-tag-filter-page .ps-tag-options:not(:has(.ps-tag.is-active)) > .ps-tag:first-child:hover {
+  color: #fff !important;
+  background: var(--secondary);
+}
+
+/* ?? Django ????????? */
+body.ps-tag-filter-page #changelist-filter details,
+body.ps-tag-filter-page #changelist-filter summary,
+body.ps-tag-filter-page #changelist-filter h2,
+body.ps-tag-filter-page #changelist-filter h3,
+body.ps-tag-filter-page #changelist-filter ul,
+body.ps-tag-filter-page #changelist-filter li,
+body.ps-tag-filter-page .toplinks {
+  all: unset;
+  display: contents;
 }

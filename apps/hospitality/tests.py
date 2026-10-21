@@ -5,10 +5,9 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from apps.bookings.models import Order
-from apps.rooms.pricing import quote
 from apps.testing import days, make_order, make_owner, make_pet, make_room
 
-from .models import AddonService, Billing, HolidayRate
+from .models import AddonService, Billing
 from .pulse import breathe, fold_clock, layout_atlas, quiet_index, quiet_line, weave
 from .seed import seed_catalog
 
@@ -43,12 +42,6 @@ class CommercePricingTests(TestCase):
         order = Order.objects.get()
         self.assertEqual(order.amount, Decimal("250.00"))
         self.assertEqual(order.addons.get().line_total, Decimal("50.00"))
-
-    def test_holiday_rate_changes_nightly_quote(self):
-        HolidayRate.objects.create(day=days(1), label="店庆", multiplier=Decimal("1.50"))
-        priced = quote(self.room, days(1), days(3))
-        self.assertEqual(priced.total, Decimal("250.00"))
-        self.assertEqual(priced.surcharged_nights[0].rule, "店庆")
 
     def test_catalog_pages(self):
         seed_catalog()

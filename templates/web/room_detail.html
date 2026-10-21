@@ -67,7 +67,7 @@
           <div class="small">
             {% for night in quote.nights %}
               <div class="d-flex justify-content-between py-1">
-                <span>{{ night.day|date:"n月j日 D" }}{% if night.rule %} <span class="badge text-bg-warning">{{ night.rule }}</span>{% endif %}</span>
+                <span>{{ night.day|date:"n月j日 D" }}</span>
                 <span>¥{{ night.price }}</span>
               </div>
             {% endfor %}

@@ -24,6 +24,7 @@ class RoomAdmin(admin.ModelAdmin):
     list_display_links = ("photo_thumb", "number")
     list_editable = ("price", "is_listed")
     list_filter = ("room_type", "pet_type", "status", "is_listed")
+    show_facets = admin.ShowFacets.NEVER
     search_fields = ("number", "name", "description")
     readonly_fields = ("photo_preview",)
     actions = ("set_maintenance", "restore_available")

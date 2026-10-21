@@ -1,17 +1,8 @@
 """可重复执行的商业目录与演示档案。"""
 
-from datetime import timedelta
 from decimal import Decimal
 
-from django.utils import timezone
-
-from .models import (
-    AddonService,
-    Billing,
-    HolidayRate,
-    OrderAddon,
-    Supply,
-)
+from .models import AddonService, Billing, OrderAddon
 
 
 def seed_catalog():
@@ -48,20 +39,6 @@ def seed_catalog():
                 "sort": sort,
             },
         )
-    for name, unit, stock, reorder in (
-        ("成犬粮", "kg", "40", "8"),
-        ("猫砂", "袋", "25", "6"),
-        ("低敏洗护液", "瓶", "12", "3"),
-    ):
-        Supply.objects.update_or_create(
-            name=name,
-            defaults={"unit": unit, "stock": Decimal(stock), "reorder_level": Decimal(reorder)},
-        )
-    today = timezone.localdate()
-    HolidayRate.objects.update_or_create(
-        day=today + timedelta(days=18),
-        defaults={"label": "店庆", "multiplier": Decimal("1.20"), "is_active": True},
-    )
 
 
 def seed_story():

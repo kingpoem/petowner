@@ -46,7 +46,15 @@
         window.alert("请先勾选要操作的项目。");
         return;
       }
-      native.value = moreSelect.value;
+      const action = moreSelect.value;
+      if (action.startsWith("cancel_")) {
+        const label = moreSelect.options[moreSelect.selectedIndex].textContent.trim();
+        if (!window.confirm(`确定对所选订单执行「${label}」？`)) {
+          event.preventDefault();
+          return;
+        }
+      }
+      native.value = action;
     });
   }
 })();

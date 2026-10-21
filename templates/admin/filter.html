@@ -1,0 +1,10 @@
+{% load i18n %}
+<div class="ps-tag-row">
+  <span class="ps-tag-label">{{ title }}</span>
+  <div class="ps-tag-options">
+    {% for choice in choices %}
+      <a href="{{ choice.query_string|iriencode }}"
+         class="ps-tag{% if choice.selected %} is-active{% endif %}">{{ choice.display }}</a>
+    {% endfor %}
+  </div>
+</div>

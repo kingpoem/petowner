@@ -4,7 +4,7 @@
     导航<span class="ps-nav-caret" aria-hidden="true">▾</span>
   </button>
   <div id="ps-nav-panel" class="ps-nav-panel" hidden data-ps-nav-panel>
-    <a class="ps-nav-item ps-nav-item-home" href="{% url 'admin:index' %}">运营看板</a>
+    <a class="ps-nav-item ps-nav-item-home" href="{% url 'admin:bookings_order_changelist' %}">寄养订单</a>
 
     {% if perms.pets.view_pet or perms.pets.view_owner %}
     <p class="ps-nav-group">宠物及主人</p>
@@ -12,10 +12,9 @@
     {% if perms.pets.view_owner %}<a class="ps-nav-item" href="{% url 'admin:pets_owner_changelist' %}">主人信息</a>{% endif %}
     {% endif %}
 
-    {% if perms.rooms.view_room or perms.hospitality.view_holidayrate %}
+    {% if perms.rooms.view_room %}
     <p class="ps-nav-group">寄养房间</p>
-    {% if perms.rooms.view_room %}<a class="ps-nav-item" href="{% url 'admin:rooms_room_changelist' %}">房间列表</a>{% endif %}
-    {% if perms.hospitality.view_holidayrate %}<a class="ps-nav-item" href="{% url 'admin:hospitality_holidayrate_changelist' %}">日历房价</a>{% endif %}
+    <a class="ps-nav-item" href="{% url 'admin:rooms_room_changelist' %}">寄养房间</a>
     {% endif %}
 
     {% if perms.bookings.view_order %}

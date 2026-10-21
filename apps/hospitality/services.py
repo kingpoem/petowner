@@ -11,12 +11,7 @@ from apps.pets.models import Owner, Pet
 from apps.rooms.models import Room
 from apps.rooms.pricing import Quote, quote
 
-from .models import (
-    AddonService,
-    Billing,
-    CareTask,
-    OrderAddon,
-)
+from .models import AddonService, Billing, OrderAddon
 
 CENT = Decimal("0.01")
 
@@ -136,14 +131,3 @@ def apply_stay(order: Order, stay: StayPrice):
     )
 
 
-def open_care_tasks(order: Order):
-    if order.tasks.exists():
-        return
-    CareTask.objects.create(order=order, title="入住核验：体重与随身物品", due_date=order.check_in)
-    for line in order.addons.select_related("service"):
-        CareTask.objects.create(
-            order=order,
-            title=line.service.name,
-            due_date=order.check_in,
-            note=line.service.summary,
-        )

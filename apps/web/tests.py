@@ -463,7 +463,6 @@ class AdminTests(TestCase):
 
     def test_admin_pages_render(self):
         for url in [
-            reverse("admin:index"),
             reverse("admin:bookings_order_changelist"),
             reverse("admin:bookings_order_change", args=[self.order.pk]),
             reverse("admin:bookings_order_add"),
@@ -477,14 +476,9 @@ class AdminTests(TestCase):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_dashboard_stats(self):
-        from apps.bookings.templatetags.admin_dashboard import dashboard_stats
-
-        stats = dashboard_stats({"request": None})
-        self.assertEqual(stats["boarding"], 1)
-        self.assertEqual(stats["capacity"], 1)
-        self.assertEqual(stats["occupancy"], 100)
-        self.assertContains(self.client.get(reverse("admin:index")), "运营看板")
+    def test_admin_index_opens_orders(self):
+        response = self.client.get(reverse("admin:index"))
+        self.assertRedirects(response, reverse("admin:bookings_order_changelist"))
 
     def test_checkout_action(self):
         self.client.post(

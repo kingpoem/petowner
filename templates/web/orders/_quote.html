@@ -4,9 +4,6 @@
       <span>
         房费
         <span class="text-muted">· {{ quote.days }}晚</span>
-        {% if quote.surcharged_nights %}
-          <span class="badge text-bg-warning">含节假日加价</span>
-        {% endif %}
       </span>
       <span>¥{{ quote.total }}</span>
     </div>

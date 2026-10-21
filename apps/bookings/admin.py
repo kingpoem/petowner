@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Case, IntegerField, Value, When
 from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils import timezone
@@ -12,6 +13,38 @@ from apps.hospitality.admin import OrderAddonInline
 
 from .calendar import build_calendar
 from .models import Order, Payment
+
+
+class StayWindowFilter(admin.SimpleListFilter):
+    """前台常用入住窗口，避免与顶部月份导航重复。"""
+
+    title = "入住窗口"
+    parameter_name = "stay"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("in_house", "当前在住"),
+            ("today_in", "今日入住"),
+            ("today_out", "今日离店"),
+            ("upcoming", "未来预约"),
+            ("active", "进行中（预约+在住）"),
+        )
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        match self.value():
+            case "in_house":
+                return queryset.filter(status=Order.Status.CHECKED_IN)
+            case "today_in":
+                return queryset.filter(check_in=today).exclude(status=Order.Status.CANCELLED)
+            case "today_out":
+                return queryset.filter(check_out=today).exclude(status=Order.Status.CANCELLED)
+            case "upcoming":
+                return queryset.filter(status=Order.Status.PENDING, check_in__gte=today)
+            case "active":
+                return queryset.filter(status__in=Order.ACTIVE_STATUSES)
+            case _:
+                return queryset
 
 
 class OrderAdminForm(forms.ModelForm):
@@ -76,9 +109,13 @@ class OrderAdmin(admin.ModelAdmin):
         "payment_status",
         "status",
     )
-    list_filter = ("status", "payment_status", "room__room_type", "check_in")
+    # 去掉 check_in 侧栏筛选，避免与顶部「按入住月份」重复；改用入住窗口
+    list_filter = (StayWindowFilter, "status", "payment_status", "room__room_type")
+    show_facets = admin.ShowFacets.NEVER
     search_fields = ("order_no", "pet__code", "pet__name", "pet__owner__name", "pet__owner__phone")
     autocomplete_fields = ("pet", "room")
+    # 列头排序回退；默认运营序在 get_ordering 里加「在住优先」
+    ordering = ("check_in", "-created_at")
     readonly_fields = (
         "order_no",
         "amount",
@@ -111,17 +148,55 @@ class OrderAdmin(admin.ModelAdmin):
     list_select_related = ("pet__owner", "room", "store")
     date_hierarchy = "check_in"
     inlines = [ServiceRecordInline, OrderAddonInline, PaymentInline]
+    # 顺序即前台流程：收款 → 入住 → 离店 → 取消
     actions = ("mark_paid", "start_boarding", "finish_boarding", "cancel_orders", "cancel_orders_full_refund")
+    actions_on_top = True
+    actions_on_bottom = True
     change_list_template = "admin/bookings/order/change_list.html"
     exclude = ("store",)
 
-    @admin.display(description="主人电话")
+    def get_queryset(self, request):
+        # 须先注解再 order_by：父类 get_queryset 会立刻按 get_ordering 排序
+        qs = self.model._default_manager.get_queryset().annotate(
+            _ops_rank=Case(
+                When(status=Order.Status.CHECKED_IN, then=Value(0)),
+                When(status=Order.Status.PENDING, then=Value(1)),
+                When(status=Order.Status.COMPLETED, then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            )
+        )
+        ordering = self.get_ordering(request)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs
+
+    def get_ordering(self, request):
+        # 未点列头时：寄养中 → 已预约 → 其他，同组内按入住日升序
+        # 仅在本列表页使用 _ops_rank，避免其它页 FK 下拉按该注解字段排序报错
+        if "o" in request.GET:
+            return super().get_ordering(request)
+        match = getattr(request, "resolver_match", None)
+        on_changelist = bool(
+            match and match.url_name == f"{self.opts.app_label}_{self.opts.model_name}_changelist"
+        )
+        if on_changelist:
+            return ("_ops_rank", "check_in", "-created_at")
+        return super().get_ordering(request)
+
+    @admin.display(description="主人电话", ordering="pet__owner__phone")
     def owner_phone(self, obj):
         return obj.pet.owner.phone
 
-    @admin.display(description="天数")
+    @admin.display(description="天数", ordering="check_in")
     def days(self, obj):
         return obj.days
+
+    def has_delete_permission(self, request, obj=None):
+        # 列表页禁止批量删除；详情仅允许删除「未支付且已取消」的脏数据
+        if obj is None:
+            return False
+        return obj.status == Order.Status.CANCELLED and obj.payment_status == Order.PaymentStatus.UNPAID
 
     def get_fieldsets(self, request, obj=None):
         if obj is None:
@@ -234,6 +309,7 @@ class PaymentAdmin(admin.ModelAdmin):
 
     list_display = ("transaction_no", "order", "kind", "method", "status", "amount", "provider_trade_no", "created_at")
     list_filter = ("kind", "method", "status", "created_at")
+    show_facets = admin.ShowFacets.NEVER
     search_fields = ("transaction_no", "provider_trade_no", "order__order_no")
     readonly_fields = (
         "transaction_no",

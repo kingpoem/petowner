@@ -19,6 +19,7 @@ class ServiceRecordAdmin(admin.ModelAdmin):
         "health_status",
     )
     list_filter = ("feeding_time",)
+    show_facets = admin.ShowFacets.NEVER
     search_fields = (
         "code",
         "order__order_no",
@@ -50,6 +51,7 @@ class ServiceRecordAdmin(admin.ModelAdmin):
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ("order", "rating", "content", "feedback", "has_reply", "is_public", "created_at")
     list_filter = ("rating", "is_public")
+    show_facets = admin.ShowFacets.NEVER
     list_editable = ("is_public",)
     search_fields = ("order__order_no", "content", "feedback")
     autocomplete_fields = ("order",)

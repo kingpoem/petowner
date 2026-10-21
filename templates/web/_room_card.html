@@ -20,7 +20,6 @@
     {% if quote %}
       <div class="quote-box small mb-3">
         共 {{ quote.days }} 晚，合计 <strong class="text-primary fs-5">¥{{ quote.total|floatformat:"-2" }}</strong>
-        {% if quote.surcharged_nights %}<div class="text-muted mt-1">含节假日价 {{ quote.surcharged_nights|length }} 晚</div>{% endif %}
       </div>
     {% endif %}
     <div class="mt-auto d-flex gap-2">

@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from decimal import Decimal
 
 from django import template
@@ -6,7 +6,7 @@ from django.db.models import Avg, Sum
 from django.utils import timezone
 
 from apps.bookings.models import Order, Payment
-from apps.care.models import Review, ServiceRecord
+from apps.care.models import Review
 from apps.rooms.models import Room
 
 register = template.Library()
@@ -27,12 +27,6 @@ def dashboard_stats(context):
     refund = payments.filter(kind=Payment.Kind.REFUND, status=Payment.Status.SUCCESS).aggregate(s=Sum("amount"))[
         "s"
     ] or Decimal("0")
-    alert_since = timezone.now() - timedelta(days=3)
-    alerts = (
-        ServiceRecord.objects.filter(created_at__gte=alert_since)
-        .filter(ServiceRecord.attention_q())
-        .select_related("order__pet")
-    )
     return {
         "today": today,
         # 待入住：今日应入住；待离店：今日应离 + 已逾期未离
@@ -48,7 +42,6 @@ def dashboard_stats(context):
             payment_status__in=(Order.PaymentStatus.UNPAID, Order.PaymentStatus.PARTIAL),
             status__in=Order.ACTIVE_STATUSES,
         ).count(),
-        "alerts": alerts[:5],
         "avg_rating": Review.objects.aggregate(avg=Avg("rating"))["avg"],
         "pending_reviews": Review.objects.filter(reply="").count(),
     }

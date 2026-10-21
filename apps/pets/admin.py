@@ -94,7 +94,10 @@ class PetAdmin(admin.ModelAdmin):
     )
     list_display_links = ("photo_thumb", "code", "name")
     list_filter = ("species", "temperament")
+    # 供订单等页的 autocomplete 使用；列表页搜索框在 change_list 模板中隐藏
     search_fields = ("code", "name", "breed", "owner__name", "owner__phone")
+    show_facets = admin.ShowFacets.NEVER
+    change_list_template = "admin/pets/pet/change_list.html"
     autocomplete_fields = ("owner",)
     readonly_fields = ("code", "created_at", "photo_preview")
     list_select_related = ("owner",)

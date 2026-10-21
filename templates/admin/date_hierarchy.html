@@ -1,0 +1,20 @@
+{% load i18n %}
+{% if show %}
+<div class="ps-tag-row ps-tag-row-dates">
+  <span class="ps-tag-label">{{ field_name }}</span>
+  <div class="ps-tag-options">
+    {% if back %}
+      <a href="{{ back.link }}" class="ps-tag">{{ back.title }}</a>
+    {% else %}
+      <span class="ps-tag is-active">{% translate "All dates" %}</span>
+    {% endif %}
+    {% for choice in choices %}
+      {% if choice.link %}
+        <a href="{{ choice.link }}" class="ps-tag">{{ choice.title }}</a>
+      {% else %}
+        <span class="ps-tag is-active">{{ choice.title }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

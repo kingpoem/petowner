@@ -26,7 +26,7 @@
 <script src="{% static 'admin/js/filters.js' %}" defer {% csp_nonce_attr %}></script>
 {% endblock %}
 
-{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-list{% endblock %}
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-list ps-tag-filter-page{% endblock %}
 
 {% if not is_popup %}
 {% block breadcrumbs %}
@@ -58,25 +58,32 @@
     <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
       <div class="changelist-form-container">
         {% block filters %}
-          {% if cl.has_filters %}
-          <search id="changelist-filter" aria-labelledby="changelist-filter-header">
-            <h2 id="changelist-filter-header">{% translate 'Filter' %}</h2>
-            {% if cl.is_facets_optional or cl.has_active_filters %}<div id="changelist-filter-extra-actions">
-              {% if cl.is_facets_optional %}<h3>
-                {% if cl.add_facets %}<a href="{{ cl.remove_facet_link }}" class="hidelink">{% translate "Hide counts" %}</a>
-                {% else %}<a href="{{ cl.add_facet_link }}" class="viewlink">{% translate "Show counts" %}</a>{% endif %}
-              </h3>{% endif %}
-              {% if cl.has_active_filters %}<h3>
-                <a href="{{ cl.clear_all_filters_qs }}">&#10006; {% translate "Clear all filters" %}</a>
-              </h3>{% endif %}
-            </div>{% endif %}
-            {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
-          </search>
+          {% if cl.has_filters or cl.date_hierarchy %}
+          <section class="ps-tag-filters" id="changelist-filter" aria-label="筛选">
+            <div class="ps-tag-filters-body">
+              {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+              {% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}
+            </div>
+            {% if cl.is_facets_optional or cl.has_active_filters %}
+            <div class="ps-tag-filters-actions">
+              {% if cl.is_facets_optional %}
+                {% if cl.add_facets %}
+                  <a href="{{ cl.remove_facet_link }}">{% translate "Hide counts" %}</a>
+                {% else %}
+                  <a href="{{ cl.add_facet_link }}">{% translate "Show counts" %}</a>
+                {% endif %}
+              {% endif %}
+              {% if cl.has_active_filters %}
+                <a class="ps-tag-clear" href="{{ cl.clear_all_filters_qs }}">清除筛选</a>
+              {% endif %}
+            </div>
+            {% endif %}
+          </section>
           {% endif %}
         {% endblock %}
         <div>
           {% block search %}{% search_form cl %}{% endblock %}
-          {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
+          {% block date_hierarchy %}{% endblock %}
 
           <form id="changelist-form" method="post"{% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %} novalidate>{% csrf_token %}
           {% if cl.formset %}

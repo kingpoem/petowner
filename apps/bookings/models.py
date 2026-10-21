@@ -280,9 +280,6 @@ class Order(models.Model):
         self.checked_in_at = timezone.now()
         self.save(update_fields=["status", "checked_in_at", "updated_at"])
         self.room.refresh_status()
-        from apps.hospitality.services import open_care_tasks
-
-        open_care_tasks(self)
         self._notify("已办理入住", f"{self.pet.name} 已入住 {self.room.display_name}，可随时查看护理动态。")
 
     @transaction.atomic

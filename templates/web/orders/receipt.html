@@ -17,7 +17,7 @@
     <tbody>
       {% for night in stay_quote.nights %}
       <tr>
-        <td>{{ night.day|date:"Y-m-d" }} 房费{% if night.rule %} · {{ night.rule }}{% endif %}</td>
+        <td>{{ night.day|date:"Y-m-d" }} 房费</td>
         <td>¥{{ night.price }}</td>
       </tr>
       {% endfor %}

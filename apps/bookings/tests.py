@@ -313,6 +313,36 @@ class CalendarTests(TestCase):
         )
 
 
+class OrderAdminListTests(TestCase):
+    def setUp(self):
+        self.admin = get_user_model().objects.create_superuser("ops", "", "pw")
+        self.client.force_login(self.admin)
+        self.url = reverse("admin:bookings_order_changelist")
+
+    def test_default_sort_puts_checked_in_before_pending(self):
+        pending = make_order(start=3, nights=2)
+        boarding = make_order(start=1, nights=2)
+        boarding.pay(Payment.Method.CASH)
+        boarding.start_boarding()
+        response = self.client.get(self.url)
+        body = response.content.decode()
+        self.assertLess(body.index(boarding.order_no), body.index(pending.order_no))
+
+    def test_stay_window_today_in_filter(self):
+        today = make_order(start=0, nights=2)
+        later = make_order(start=5, nights=2)
+        response = self.client.get(self.url, {"stay": "today_in"})
+        self.assertContains(response, today.order_no)
+        self.assertNotContains(response, later.order_no)
+
+    def test_changelist_hides_bulk_delete(self):
+        make_order(start=2, nights=1)
+        response = self.client.get(self.url)
+        self.assertContains(response, "批量操作")
+        self.assertContains(response, "入住窗口")
+        self.assertNotContains(response, '<option value="delete_selected">')
+
+
 @override_settings(PAYMENT_TIMEOUT_MINUTES=30)
 class ExpireOrdersTests(TestCase):
     def _age(self, order, minutes):

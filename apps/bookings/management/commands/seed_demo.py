@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group
 from django.core.files import File
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -146,7 +146,10 @@ class Command(BaseCommand):
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser("admin", "admin@example.com", "admin123")
             self.stdout.write("已创建管理员 admin / admin123")
-        self._groups()
+        # 清理历史预置权限组（前台/护理师），业务仅使用超级管理员
+        removed, _ = Group.objects.filter(name__in=("前台", "护理师")).delete()
+        if removed:
+            self.stdout.write(f"已删除历史权限组（{removed} 条关联）")
         seed_catalog()
 
         flagship = Store.objects.filter(code="flagship").first() or Store.default()
@@ -367,47 +370,3 @@ class Command(BaseCommand):
 
         seed_story()
         self.stdout.write(self.style.SUCCESS(f"演示数据写入完成；演示顾客 13800000001 / {DEMO_PASSWORD}"))
-
-    def _groups(self):
-        def perms(*codenames):
-            return Permission.objects.filter(codename__in=codenames)
-
-        front, _ = Group.objects.get_or_create(name="前台")
-        front.permissions.set(
-            perms(
-                "view_owner",
-                "add_owner",
-                "change_owner",
-                "view_pet",
-                "add_pet",
-                "change_pet",
-                "view_room",
-                "change_room",
-                "view_order",
-                "add_order",
-                "change_order",
-                "view_payment",
-                "view_servicerecord",
-                "view_review",
-                "change_review",
-                "view_addonservice",
-                "view_caretask",
-                "change_caretask",
-                "view_supply",
-            )
-        )
-        carer, _ = Group.objects.get_or_create(name="护理师")
-        carer.permissions.set(
-            perms(
-                "view_pet",
-                "view_order",
-                "view_room",
-                "view_servicerecord",
-                "add_servicerecord",
-                "change_servicerecord",
-                "view_caretask",
-                "change_caretask",
-                "add_caretask",
-                "add_supplymovement",
-            )
-        )

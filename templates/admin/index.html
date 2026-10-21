@@ -24,10 +24,6 @@
       <h1>运营看板</h1>
       <p>今日入住、离店与房态一览</p>
     </div>
-    <nav class="ps-shortcuts" aria-label="今日操作">
-      {% if perms.bookings.view_order %}<a href="{% url 'admin:bookings_order_calendar' %}">房态日历</a>{% endif %}
-      {% if perms.bookings.add_order %}<a class="ps-btn-primary" href="{% url 'admin:bookings_order_add' %}">录入订单</a>{% endif %}
-    </nav>
   </header>
 
   <section class="ps-metrics" aria-label="今日指标">
@@ -64,17 +60,6 @@
           <span>{{ o.room.number }} · {% if o.check_out < s.today %}逾期 {{ o.check_out|date:"m-d" }}{% else %}今日离店{% endif %}</span>
         </li>
         {% empty %}<li class="ps-empty">暂无</li>{% endfor %}
-      </ul>
-    </article>
-    <article class="ps-work {% if s.alerts %}ps-work-alert{% endif %}">
-      <h2>健康异常</h2>
-      <ul>
-        {% for r in s.alerts %}
-        <li>
-          <a href="{% url 'admin:bookings_order_change' r.order_id %}">{{ r.order.pet.name }}</a>
-          <span>{{ r.health_note|default:r.care_content|truncatechars:28 }}</span>
-        </li>
-        {% empty %}<li class="ps-empty">近 3 天无异常</li>{% endfor %}
       </ul>
     </article>
   </section>
