@@ -394,7 +394,6 @@ class Command(BaseCommand):
                 "view_caretask",
                 "change_caretask",
                 "view_supply",
-                "view_storenotice",
             )
         )
         carer, _ = Group.objects.get_or_create(name="护理师")
@@ -409,7 +408,6 @@ class Command(BaseCommand):
                 "view_caretask",
                 "change_caretask",
                 "add_caretask",
-                "view_medication",
                 "add_supplymovement",
             )
         )

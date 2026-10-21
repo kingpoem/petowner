@@ -6,6 +6,4 @@ app_name = "hospitality"
 
 urlpatterns = [
     path("services/", views.service_menu, name="services"),
-    path("me/pets/<int:pk>/health/", views.pet_health, name="pet_health"),
-    path("me/pets/meds/<int:pk>/stop/", views.stop_medication, name="stop_medication"),
 ]

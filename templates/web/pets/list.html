@@ -25,7 +25,6 @@
         </div>
       </div>
       <div class="border-top px-4 py-2 d-flex justify-content-end gap-2">
-        <a class="btn btn-sm btn-light" href="{% url 'hospitality:pet_health' pet.pk %}"><i class="bi bi-heart-pulse me-1"></i>健康护照</a>
         <a class="btn btn-sm btn-light" href="{% url 'web:pet_edit' pet.pk %}"><i class="bi bi-pencil me-1"></i>编辑</a>
         <a class="btn btn-sm btn-outline-primary" href="{% url 'web:booking_create' %}?pet={{ pet.pk }}">为 TA 预约</a>
         {% if not pet.order_count %}

@@ -5,16 +5,11 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from apps.pets.models import Pet
-
 from .models import (
     AddonService,
     Billing,
     HolidayRate,
-    Medication,
     OrderAddon,
-    StaffMember,
-    StoreNotice,
     Supply,
 )
 
@@ -33,7 +28,7 @@ def seed_catalog():
             2,
         ),
         ("video", "视频探视", "护理师每天发一段短视频", "bi-camera-video", "15", Billing.NIGHT, "any", 3),
-        ("meds", "喂药照护", "按用药计划喂药并记录反应", "bi-capsule", "20", Billing.NIGHT, "any", 4),
+        ("meds", "喂药照护", "按医嘱喂药并记录反应", "bi-capsule", "20", Billing.NIGHT, "any", 4),
         ("bath", "离店洗护", "离店当天洗澡、吹干、梳毛", "bi-droplet", "128", Billing.ONCE, "any", 5),
         ("spa", "精致 SPA", "药浴或护毛，适合皮肤敏感的宠物", "bi-stars", "168", Billing.ONCE, "any", 6),
         ("party", "生日布置", "小蛋糕、拍照和房间布置", "bi-balloon-heart", "199", Billing.ONCE, "any", 7),
@@ -53,12 +48,6 @@ def seed_catalog():
                 "sort": sort,
             },
         )
-    for name, role, skills in (
-        ("赵护理", StaffMember.Role.CARER, "犬只行为、喂药"),
-        ("陈前台", StaffMember.Role.FRONT, "预约、收银、接送"),
-        ("周店长", StaffMember.Role.MANAGER, "排班、客诉、定价"),
-    ):
-        StaffMember.objects.update_or_create(name=name, defaults={"role": role, "skills": skills, "is_active": True})
     for name, unit, stock, reorder in (
         ("成犬粮", "kg", "40", "8"),
         ("猫砂", "袋", "25", "6"),
@@ -73,28 +62,11 @@ def seed_catalog():
         day=today + timedelta(days=18),
         defaults={"label": "店庆", "multiplier": Decimal("1.20"), "is_active": True},
     )
-    StoreNotice.objects.update_or_create(
-        title="入住请携带日常口粮与熟悉用品",
-        defaults={
-            "body": "自带口粮可减少换粮应激；小毯子或玩具有助于安抚。可在「健康护照」里登记寄养期间的用药计划。",
-            "is_published": True,
-            "pinned": True,
-        },
-    )
 
 
 def seed_story():
-    pet = Pet.objects.filter(name="旺财").first()
-    if pet is None:
-        return
-    if not pet.medications.filter(drug="抗过敏片").exists():
-        Medication.objects.create(
-            pet=pet,
-            drug="抗过敏片",
-            dosage="半片",
-            frequency="发现抓挠时喂一次，每日不超过两次",
-            note="对鸡肉过敏，不要用含鸡肉的奖励",
-        )
+    """保留入口，兼容 seed_demo 调用。"""
+    return
 
 
 def attach_demo_addon(order, code="video"):

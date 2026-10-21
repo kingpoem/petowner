@@ -301,6 +301,17 @@ class CalendarTests(TestCase):
         self.assertContains(response, "房态日历")
         self.assertContains(response, paid.room.number)
 
+    def test_app_index_redirects_to_order_changelist(self):
+        admin = get_user_model().objects.create_superuser("nav", "", "pw")
+        self.client.force_login(admin)
+        response = self.client.get(reverse("admin:app_list", kwargs={"app_label": "bookings"}))
+        self.assertRedirects(response, reverse("admin:bookings_order_changelist"))
+        self.assertNotContains(
+            self.client.get(reverse("admin:bookings_order_changelist")),
+            "预约与订单管理",
+            html=False,
+        )
+
 
 @override_settings(PAYMENT_TIMEOUT_MINUTES=30)
 class ExpireOrdersTests(TestCase):

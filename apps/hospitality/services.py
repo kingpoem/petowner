@@ -147,11 +147,3 @@ def open_care_tasks(order: Order):
             due_date=order.check_in,
             note=line.service.summary,
         )
-    meds = order.pet.medications.filter(is_active=True)
-    for med in meds:
-        CareTask.objects.create(
-            order=order,
-            title=f"用药：{med.drug} {med.dosage}",
-            due_date=order.check_in,
-            note=med.frequency,
-        )

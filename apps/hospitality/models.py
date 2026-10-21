@@ -1,12 +1,11 @@
 from decimal import Decimal
 
-from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
 from apps.bookings.models import Order
-from apps.pets.models import Pet, Species
+from apps.pets.models import Species
 
 
 class Billing(models.TextChoices):
@@ -58,53 +57,6 @@ class OrderAddon(models.Model):
         return f"{self.order} · {self.service.name}"
 
 
-class Medication(models.Model):
-    pet = models.ForeignKey(Pet, verbose_name="宠物", on_delete=models.CASCADE, related_name="medications")
-    drug = models.CharField("药品", max_length=40)
-    dosage = models.CharField("剂量", max_length=40)
-    frequency = models.CharField("频次", max_length=40, help_text="如：每日两次，随早餐")
-    note = models.CharField("注意事项", max_length=120, blank=True)
-    is_active = models.BooleanField("寄养期间执行", default=True)
-
-    class Meta:
-        verbose_name = "用药计划"
-        verbose_name_plural = verbose_name
-        ordering = ["-is_active", "drug"]
-
-    def __str__(self):
-        return f"{self.pet.name} · {self.drug}"
-
-
-class StaffMember(models.Model):
-    class Role(models.TextChoices):
-        FRONT = "front", "前台"
-        CARER = "carer", "护理师"
-        MANAGER = "manager", "店长"
-
-    name = models.CharField("姓名", max_length=30)
-    phone = models.CharField("电话", max_length=20, blank=True)
-    role = models.CharField("岗位", max_length=10, choices=Role, default=Role.CARER)
-    skills = models.CharField("擅长", max_length=120, blank=True)
-    bio = models.CharField("简介", max_length=200, blank=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name="后台账号",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="staff_profiles",
-    )
-    is_active = models.BooleanField("在职", default=True)
-
-    class Meta:
-        verbose_name = "员工"
-        verbose_name_plural = verbose_name
-        ordering = ["role", "name"]
-
-    def __str__(self):
-        return f"{self.name}（{self.get_role_display()}）"
-
-
 class CareTask(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "待办"
@@ -112,9 +64,6 @@ class CareTask(models.Model):
         SKIPPED = "skipped", "已跳过"
 
     order = models.ForeignKey(Order, verbose_name="订单", on_delete=models.CASCADE, related_name="tasks")
-    staff = models.ForeignKey(
-        StaffMember, verbose_name="负责人", on_delete=models.SET_NULL, null=True, blank=True, related_name="tasks"
-    )
     title = models.CharField("任务", max_length=80)
     due_date = models.DateField("截止日期")
     status = models.CharField("状态", max_length=10, choices=Status, default=Status.PENDING)
@@ -194,26 +143,6 @@ class HolidayRate(models.Model):
 
     def __str__(self):
         return f"{self.day} {self.label} ×{self.multiplier}"
-
-
-class StoreNotice(models.Model):
-    title = models.CharField("标题", max_length=60)
-    body = models.TextField("正文")
-    is_published = models.BooleanField("发布", default=True)
-    pinned = models.BooleanField("置顶", default=False)
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "门店公告"
-        verbose_name_plural = verbose_name
-        ordering = ["-pinned", "-created_at"]
-
-    def __str__(self):
-        return self.title
-
-    @classmethod
-    def published(cls):
-        return cls.objects.filter(is_published=True)
 
 
 def local_today():
