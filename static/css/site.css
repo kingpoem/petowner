@@ -23,6 +23,11 @@
   --bs-border-radius: 12px;
 }
 
+html {
+  /* 顶栏是粘性的，锚点要停在导航下方，否则标题会被挡住 */
+  scroll-padding-top: 5rem;
+}
+
 body {
   accent-color: var(--ps-primary);
   background: var(--ps-bg);
@@ -521,6 +526,7 @@ img[loading="lazy"] {
 }
 
 .cover {
+  display: block;
   position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
@@ -528,6 +534,8 @@ img[loading="lazy"] {
 }
 
 .cover img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
