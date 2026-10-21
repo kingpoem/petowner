@@ -1253,7 +1253,11 @@ h1, h2, h3, h4, h5 {
 }
 
 .care-page-header {
-  padding-bottom: 0.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.care-page-header + .care-block {
+  margin-top: 2rem;
 }
 
 .care-block + .care-block {

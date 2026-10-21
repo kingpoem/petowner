@@ -25,9 +25,9 @@
 
     {% if perms.care.view_servicerecord or perms.care.view_review or perms.hospitality.view_addonservice %}
     <p class="ps-nav-group">服务与评价</p>
+    {% if perms.hospitality.view_addonservice %}<a class="ps-nav-item" href="{% url 'admin:hospitality_addonservice_changelist' %}">增值服务</a>{% endif %}
     {% if perms.care.view_servicerecord %}<a class="ps-nav-item" href="{% url 'admin:care_servicerecord_changelist' %}">服务记录</a>{% endif %}
     {% if perms.care.view_review %}<a class="ps-nav-item" href="{% url 'admin:care_review_changelist' %}">服务评价</a>{% endif %}
-    {% if perms.hospitality.view_addonservice %}<a class="ps-nav-item" href="{% url 'admin:hospitality_addonservice_changelist' %}">增值服务</a>{% endif %}
     {% endif %}
   </div>
 </li>
